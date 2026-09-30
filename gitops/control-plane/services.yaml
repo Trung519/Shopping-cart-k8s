@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: shopping-cart-services
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - name: frontend
+            chartPath: shopping-cart-frontend/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/20-frontend.yaml
+          - name: basket-service
+            chartPath: shopping-cart-basket/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/21-basket-service.yaml
+          - name: product-catalog
+            chartPath: shopping-cart-product-catalog/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/22-product-catalog.yaml
+          - name: order-service
+            chartPath: shopping-cart-order/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/23-order-service.yaml
+          - name: payment-service
+            chartPath: shopping-cart-payment/helmchart
+            namespace: shopping-cart-payment
+            valuesPath: config-secret-secure/values/local/24-payment-service.yaml
+          - name: commerce-bff
+            chartPath: commerce-bff/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/25-commerce-bff.yaml
+          - name: account-service
+            chartPath: account-service/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/26-account-service.yaml
+          - name: seller-service
+            chartPath: seller-service/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: config-secret-secure/values/local/27-seller-service.yaml
+          - name: shopping-integration
+            chartPath: shopping-integration/helmchart
+            namespace: shopping-cart-data
+            valuesPath: config-secret-secure/values/local/10-shopping-integration.yaml
+          - name: shopping-cart-security
+            chartPath: shopping-cart-security/helmchart
+            namespace: shopping-cart-apps
+            valuesPath: shopping-cart-security/helmchart/values.yaml
+          - name: shopping-observability
+            chartPath: shopping-observability/helmchart
+            namespace: shopping-cart-observability
+            valuesPath: shopping-observability/helmchart/values.yaml
+  template:
+    metadata:
+      name: '{{.name}}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/part-of: shopping-cart
+    spec:
+      project: shopping-cart
+      sources:
+        - repoURL: https://github.com/Trung519/Shopping-cart-k8s.git
+          targetRevision: dev
+          path: '{{.chartPath}}'
+          helm:
+            releaseName: '{{.name}}'
+            valueFiles:
+              - $values/config-secret-secure/values/local/00-global.yaml
+              - '$values/{{.valuesPath}}'
+        - repoURL: https://github.com/Trung519/Shopping-cart-k8s.git
+          targetRevision: dev
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'
+      # Intentionally manual: review each workload's Diff before deploying.
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+  syncPolicy:
+    # Removed list entries do not automatically delete Applications.
+    applicationsSync: create-update
+    preserveResourcesOnDeletion: true

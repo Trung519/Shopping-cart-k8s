@@ -17,6 +17,10 @@ This repository collects the local shopping cart source projects into a single r
 
 See each component's README for details. This is a source snapshot, not a verified migration of the existing deployment pipelines to this monorepo. Existing Git URLs and relative chart paths in Argo CD definitions still refer to the original repositories and need adjustment before use with this repository.
 
+## Argo CD for this monorepo
+
+The new [GitOps setup](gitops/README.md) uses one root Application and an ApplicationSet catalog for the existing charts. All workload Applications start with manual sync. Review these local changes before pushing and bootstrapping; the legacy definitions under `shopping-cart-infra/argocd/` remain separate.
+
 ## Credentials and generated files
 
 Nested Git history, dependency/build directories, local environment files and binary artifacts are excluded. Detected credential literals in the publishing copy were replaced with placeholders, and a vendored credential test fixture was omitted. Supply local secrets through environment variables or Vault; never commit live credentials. Placeholder replacement may require local configuration before running affected scripts or tests.

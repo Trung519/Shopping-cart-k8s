@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopping-cart
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Shopping cart workloads from the current monorepo
+  sourceRepos:
+    - https://github.com/Trung519/Shopping-cart-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-apps
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-payment
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-data
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-identity
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-gateway
+    - server: https://kubernetes.default.svc
+      namespace: shopping-cart-observability
+    - server: https://kubernetes.default.svc
+      namespace: vault
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: external-secrets.io
+      kind: ClusterSecretStore
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
