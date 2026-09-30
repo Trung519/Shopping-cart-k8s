@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["serviceName", "image", "containerPort", "service"],
+  "properties": {
+    "serviceName": {"type": "string", "minLength": 1},
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "containerPort": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "service": {
+      "type": "object",
+      "required": ["type", "port", "targetPort"],
+      "properties": {
+        "type": {"enum": ["ClusterIP", "LoadBalancer"]},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "targetPort": {"type": "integer", "minimum": 1, "maximum": 65535}
+      }
+    }
+  }
+}
+

@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopping-cart
+  namespace: cicd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Project for all shopping cart microservices and infrastructure
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

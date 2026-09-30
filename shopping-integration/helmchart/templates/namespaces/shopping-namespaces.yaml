@@ -1,0 +1,13 @@
+{{- range $key := list "apps" "data" "payment" "identity" "gateway" }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ index $.Values.namespaces $key }}
+  labels:
+    app.kubernetes.io/part-of: shopping-cart
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    {{- with index $.Values.namespaceLabels $key }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+{{- end }}

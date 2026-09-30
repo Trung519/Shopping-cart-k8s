@@ -1,0 +1,6 @@
+apiVersion: v2
+name: commerce-bff
+description: Browser-facing marketplace API and OIDC session gateway
+type: application
+version: 0.1.3
+appVersion: "0.1.3"

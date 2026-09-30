@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.gateway.name }}-options
+  namespace: {{ .Values.namespaces.gateway }}
+data:
+  service: |
+    spec:
+      type: {{ .Values.gateway.serviceType }}
+      {{- if eq .Values.gateway.serviceType "NodePort" }}
+      ports:
+        - name: http
+          port: {{ .Values.gateway.listenerPort }}
+          nodePort: {{ .Values.gateway.nodePort }}
+      {{- end }}

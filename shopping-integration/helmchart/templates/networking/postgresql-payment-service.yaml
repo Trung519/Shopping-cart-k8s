@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .Values.postgresql.payment.name }}, namespace: {{ .Values.namespaces.data }}}
+spec:
+  type: ClusterIP
+  ports: [{name: postgresql, port: {{ .Values.postgresql.port }}, targetPort: postgresql, protocol: TCP}]
+  selector: {app.kubernetes.io/name: postgresql, app.kubernetes.io/instance: payment}
+

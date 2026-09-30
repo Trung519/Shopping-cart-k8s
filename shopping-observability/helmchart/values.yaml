@@ -1,0 +1,294 @@
+namespace:
+  create: false
+  name: shopping-cart-observability
+  labels:
+    istio-injection: disabled
+
+loki:
+  enabled: true
+  fullnameOverride: loki
+  deploymentMode: SingleBinary
+
+  loki:
+    auth_enabled: false
+    commonConfig:
+      path_prefix: /var/loki
+      replication_factor: 1
+    storage:
+      type: filesystem
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    limits_config:
+      retention_period: 48h
+      ingestion_rate_mb: 4
+      ingestion_burst_size_mb: 8
+      reject_old_samples: true
+      reject_old_samples_max_age: 48h
+    compactor:
+      working_directory: /var/loki/compactor
+      retention_enabled: true
+      retention_delete_delay: 15m
+      retention_delete_worker_count: 20
+      delete_request_store: filesystem
+      delete_request_cancel_period: 0s
+    runtimeConfig:
+      overrides:
+        fake:
+          deletion_mode: filter-and-delete
+
+  singleBinary:
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/hostname: k3d-lab-k8s-agent-1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 8Gi
+    extraContainers:
+      - name: disk-pressure-cleaner
+        image: python:3.13-alpine3.22@sha256:e81548ac35b07a3bd4805f275107592ef458b1e893c0e04d45aedaa19416cca5
+        imagePullPolicy: IfNotPresent
+        command:
+          - python
+          - -c
+          - |
+            import json
+            import os
+            import time
+            import urllib.parse
+            import urllib.request
+
+            loki_url = "http://127.0.0.1:3100"
+            marker = "/var/loki/.disk-pressure-cleaner-last-run"
+            threshold_percent = 90
+            volume_capacity_bytes = 8 * 1024 * 1024 * 1024
+            cleanup_window_seconds = 4 * 60 * 60
+            cooldown_seconds = 4 * 60 * 60
+            poll_seconds = 5 * 60
+
+            def allocated_bytes(path):
+                total = 0
+                for root, directories, files in os.walk(path):
+                    for name in directories + files:
+                        item = os.path.join(root, name)
+                        try:
+                            total += os.lstat(item).st_blocks * 512
+                        except FileNotFoundError:
+                            pass
+                return total
+
+            def oldest_log_timestamp(now_seconds):
+                params = urllib.parse.urlencode({
+                    "query": '{job="fluent-bit"}',
+                    "start": (now_seconds - 72 * 60 * 60) * 1_000_000_000,
+                    "end": now_seconds * 1_000_000_000,
+                    "direction": "forward",
+                    "limit": 1,
+                })
+                with urllib.request.urlopen(
+                    f"{loki_url}/loki/api/v1/query_range?{params}", timeout=30
+                ) as response:
+                    result = json.load(response)["data"]["result"]
+                timestamps = [int(stream["values"][0][0]) for stream in result if stream["values"]]
+                return min(timestamps) // 1_000_000_000 if timestamps else None
+
+            while True:
+                try:
+                    used_bytes = allocated_bytes("/var/loki")
+                    used_percent = int(used_bytes * 100 / volume_capacity_bytes)
+                    now = int(time.time())
+                    last_run = int(open(marker).read().strip()) if os.path.exists(marker) else 0
+                    if used_percent >= threshold_percent and now - last_run >= cooldown_seconds:
+                        oldest = oldest_log_timestamp(now)
+                        if oldest is None:
+                            print("disk pressure detected but Loki returned no logs", flush=True)
+                        else:
+                            params = urllib.parse.urlencode({
+                                "query": '{job="fluent-bit"}',
+                                "start": oldest,
+                                "end": oldest + cleanup_window_seconds,
+                                "max_interval": "4h",
+                            })
+                            request = urllib.request.Request(
+                                f"{loki_url}/loki/api/v1/delete?{params}",
+                                data=b"",
+                                method="POST",
+                            )
+                            with urllib.request.urlopen(request, timeout=30) as response:
+                                if response.status != 204:
+                                    raise RuntimeError(f"unexpected delete status {response.status}")
+                            with open(marker, "w", encoding="ascii") as handle:
+                                handle.write(f"{now}\n")
+                            print(
+                                f"disk usage {used_percent}%: requested deletion "
+                                f"from {oldest} to {oldest + cleanup_window_seconds}",
+                                flush=True,
+                            )
+                except Exception as error:
+                    print(f"disk pressure check failed: {error}", flush=True)
+                time.sleep(poll_seconds)
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 96Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+          - name: storage
+            mountPath: /var/loki
+
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+  backend:
+    replicas: 0
+
+  chunksCache:
+    enabled: false
+  resultsCache:
+    enabled: false
+  lokiCanary:
+    enabled: false
+  test:
+    enabled: false
+  sidecar:
+    rules:
+      enabled: false
+  gateway:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+  minio:
+    enabled: false
+
+grafana:
+  enabled: true
+  fullnameOverride: grafana
+  replicas: 1
+
+  admin:
+    existingSecret: grafana-admin
+
+  initChownData:
+    enabled: false
+
+  testFramework:
+    enabled: false
+
+  adminUser: admin
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    size: 2Gi
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki-gateway
+          isDefault: true
+
+fluent-bit:
+  enabled: true
+  fullnameOverride: fluent-bit
+  kind: DaemonSet
+
+  tolerations:
+    - operator: Exists
+
+  testFramework:
+    enabled: false
+
+  daemonSetVolumes:
+    - name: varlog
+      hostPath:
+        path: /var/log
+
+  daemonSetVolumeMounts:
+    - name: varlog
+      mountPath: /var/log
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  config:
+    inputs: |
+      [INPUT]
+          Name tail
+          Path /var/log/containers/*.log
+          multiline.parser docker, cri
+          Tag kube.*
+          DB /var/log/flb_kube_all.db
+          DB.Sync Normal
+          Read_from_Head On
+          Mem_Buf_Limit 5MB
+          Skip_Long_Lines On
+
+    filters: |
+      [FILTER]
+          Name kubernetes
+          Match kube.*
+          Merge_Log On
+          Keep_Log Off
+          K8S-Logging.Parser On
+          K8S-Logging.Exclude Off
+          Labels Off
+          Annotations Off
+
+    outputs: |
+      [OUTPUT]
+          Name loki
+          Match kube.*
+          Host loki-gateway
+          Port 80
+          Labels job=fluent-bit,cluster=lab-k8s
+          Label_Keys $kubernetes['namespace_name'],$kubernetes['pod_name'],$kubernetes['container_name'],$kubernetes['host']
+          Auto_Kubernetes_Labels Off
+          Line_Format json
+          Retry_Limit False

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.rabbitmq.name }}
+  namespace: {{ .Values.namespaces.data }}
+  labels: {app.kubernetes.io/name: rabbitmq, app.kubernetes.io/part-of: shopping-cart}
+spec:
+  serviceName: {{ .Values.rabbitmq.name }}-headless
+  replicas: {{ .Values.rabbitmq.replicas }}
+  selector:
+    matchLabels: {app.kubernetes.io/name: rabbitmq}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: rabbitmq, app.kubernetes.io/part-of: shopping-cart}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap/rabbitmq-config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.rabbitmq.name }}
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: setup-permissions
+          image: "{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}"
+          command: [sh, -c, "chown -R 999:999 /var/lib/rabbitmq"]
+          volumeMounts: [{name: data, mountPath: /var/lib/rabbitmq}]
+      containers:
+        - name: rabbitmq
+          image: "{{ .Values.images.rabbitmq.repository }}:{{ .Values.images.rabbitmq.tag }}"
+          imagePullPolicy: {{ .Values.images.rabbitmq.pullPolicy }}
+          ports:
+            - {name: amqp, containerPort: {{ .Values.rabbitmq.ports.amqp }}}
+            - {name: management, containerPort: {{ .Values.rabbitmq.ports.management }}}
+            - {name: epmd, containerPort: {{ .Values.rabbitmq.ports.epmd }}}
+            - {name: dist, containerPort: {{ .Values.rabbitmq.ports.distribution }}}
+            - {name: prometheus, containerPort: {{ .Values.rabbitmq.ports.prometheus }}}
+          env:
+            - name: MY_POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: MY_POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+            - {name: RABBITMQ_USE_LONGNAME, value: "true"}
+            - {name: RABBITMQ_NODENAME, value: {{ printf "rabbit@$(MY_POD_NAME).%s-headless.$(MY_POD_NAMESPACE).svc.cluster.local" .Values.rabbitmq.name | quote }}}
+            - name: RABBITMQ_ERLANG_COOKIE
+              valueFrom: {secretKeyRef: {name: {{ .Values.rabbitmq.secretName }}, key: erlangCookie}}
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom: {secretKeyRef: {name: {{ .Values.rabbitmq.secretName }}, key: username}}
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom: {secretKeyRef: {name: {{ .Values.rabbitmq.secretName }}, key: password}}
+          resources:
+            {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
+          livenessProbe: {exec: {command: [rabbitmq-diagnostics, ping]}, initialDelaySeconds: 60, periodSeconds: 60, timeoutSeconds: 15}
+          readinessProbe: {exec: {command: [rabbitmq-diagnostics, check_running]}, initialDelaySeconds: 20, periodSeconds: 30, timeoutSeconds: 10}
+          volumeMounts:
+            - {name: config, mountPath: /etc/rabbitmq}
+            - {name: data, mountPath: /var/lib/rabbitmq}
+      volumes:
+        - name: config
+          configMap: {name: {{ .Values.rabbitmq.name }}-config}
+  volumeClaimTemplates:
+    - metadata: {name: data, labels: {app.kubernetes.io/name: rabbitmq}}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: {{ .Values.rabbitmq.storageClassName }}
+        resources: {requests: {storage: {{ .Values.rabbitmq.storage }}}}

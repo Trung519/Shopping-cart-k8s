@@ -1,0 +1,279 @@
+// Jenkins Pipeline for Shopping Cart Image Updates
+// Triggered by GitHub Actions webhook after successful image push to GHCR
+//
+// This pipeline:
+// 1. Receives webhook with service name and image tag
+// 2. Clones the infrastructure repository
+// 3. Updates Helm values with new image tag
+// 4. Commits and pushes changes
+// 5. Argo CD automatically syncs the deployment
+//
+// Required Jenkins Configuration:
+// - Install "Generic Webhook Trigger" plugin
+// - Create Pipeline job with this Jenkinsfile
+// - Configure webhook token in job settings
+// - Add GitHub credentials for infrastructure repo access
+// - Install yq tool on Jenkins agent
+
+pipeline {
+    agent any
+
+    // Parameters extracted from webhook payload
+    parameters {
+        string(name: 'service', defaultValue: '', description: 'Service name from GitHub repository')
+        string(name: 'image_tag', defaultValue: '', description: 'Image tag (e.g., main-abc1234)')
+        string(name: 'git_sha', defaultValue: '', description: 'Git commit SHA')
+        string(name: 'git_ref', defaultValue: '', description: 'Git ref (e.g., refs/heads/main)')
+        string(name: 'git_author', defaultValue: '', description: 'Commit author')
+        string(name: 'commit_message', defaultValue: '', description: 'Commit message')
+    }
+
+    environment {
+        // Infrastructure repository configuration
+        INFRASTRUCTURE_REPO = 'https://github.com/USERNAME/shopping-cart-infra.git'
+        INFRASTRUCTURE_BRANCH = 'main'
+        GIT_CREDENTIAL = 'github-credentials'  // Jenkins credential ID
+
+        // Helm values configuration
+        HELM_VALUES_DIR = 'chart'
+        HELM_VALUES_FILE = 'values-dev.yaml'  // Use values-dev.yaml for development
+
+        // Git configuration
+        GIT_USER_NAME = 'Jenkins CI'
+        GIT_USER_EMAIL = 'jenkins@ci.local'
+    }
+
+    stages {
+        stage('Validate Input') {
+            steps {
+                script {
+                    echo "=== Webhook Received ==="
+                    echo "Service: ${params.service}"
+                    echo "Image Tag: ${params.image_tag}"
+                    echo "Git SHA: ${params.git_sha}"
+                    echo "Git Ref: ${params.git_ref}"
+                    echo "Git Author: ${params.git_author}"
+                    echo "Commit Message: ${params.commit_message}"
+
+                    // Validate required parameters
+                    if (!params.service || !params.image_tag) {
+                        error("Missing required parameters: service and image_tag are required")
+                    }
+
+                    // Only process main branch pushes (ignore develop, feature branches)
+                    if (!params.git_ref.contains('refs/heads/main')) {
+                        echo "⏭️  Skipping: Not a main branch push (ref: ${params.git_ref})"
+                        currentBuild.result = 'SUCCESS'
+                        return
+                    }
+                }
+            }
+        }
+
+        stage('Clone Infrastructure Repository') {
+            steps {
+                dir('infrastructure') {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${INFRASTRUCTURE_BRANCH}"]],
+                        userRemoteConfigs: [[
+                            url: "${INFRASTRUCTURE_REPO}",
+                            credentialsId: "${GIT_CREDENTIAL}"
+                        ]]
+                    ])
+                }
+            }
+        }
+
+        stage('Check yq Installation') {
+            steps {
+                script {
+                    def yqInstalled = sh(script: 'command -v yq', returnStatus: true) == 0
+                    if (!yqInstalled) {
+                        error("yq tool is not installed. Install with: wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && chmod +x /usr/local/bin/yq")
+                    }
+                    echo "✓ yq is installed"
+                    sh 'yq --version'
+                }
+            }
+        }
+
+        stage('Update Image Tag') {
+            steps {
+                dir('infrastructure') {
+                    script {
+                        // Map service repository name to Helm value path
+                        def serviceMap = [
+                            'shopping-cart-product-catalog': 'productCatalog.image.tag',
+                            'shopping-cart-shopping-cart': 'shoppingCart.image.tag',
+                            'shopping-cart-order-service': 'orderService.image.tag',
+                            'shopping-cart-payment-service': 'paymentService.image.tag',
+                            'shopping-cart-frontend': 'frontend.image.tag'
+                        ]
+
+                        def valuePath = serviceMap[params.service]
+                        if (!valuePath) {
+                            error("Unknown service: ${params.service}. Supported services: ${serviceMap.keySet()}")
+                        }
+
+                        def valuesFile = "${HELM_VALUES_DIR}/${HELM_VALUES_FILE}"
+
+                        echo "=== Updating Image Tag ==="
+                        echo "Values File: ${valuesFile}"
+                        echo "Value Path: ${valuePath}"
+                        echo "New Tag: ${params.image_tag}"
+
+                        // Get current tag
+                        def currentTag = sh(
+                            script: "yq eval '.${valuePath}' ${valuesFile}",
+                            returnStdout: true
+                        ).trim()
+                        echo "Current Tag: ${currentTag}"
+
+                        // Update tag
+                        sh """
+                            yq eval '.${valuePath} = "${params.image_tag}"' -i ${valuesFile}
+                        """
+
+                        // Verify update
+                        def newTag = sh(
+                            script: "yq eval '.${valuePath}' ${valuesFile}",
+                            returnStdout: true
+                        ).trim()
+                        echo "Updated Tag: ${newTag}"
+
+                        if (newTag != params.image_tag) {
+                            error("Failed to update image tag. Expected: ${params.image_tag}, Got: ${newTag}")
+                        }
+
+                        echo "✓ Image tag updated successfully"
+                    }
+                }
+            }
+        }
+
+        stage('Commit and Push') {
+            steps {
+                dir('infrastructure') {
+                    script {
+                        // Check if there are changes to commit
+                        def hasChanges = sh(
+                            script: 'git diff --quiet',
+                            returnStatus: true
+                        ) != 0
+
+                        if (!hasChanges) {
+                            echo "⏭️  No changes to commit (tag already up-to-date)"
+                            return
+                        }
+
+                        // Extract service name from repo (e.g., shopping-cart-product-catalog -> product-catalog)
+                        def shortServiceName = params.service.replaceFirst('shopping-cart-', '')
+
+                        // Configure git
+                        sh """
+                            git config user.name "${GIT_USER_NAME}"
+                            git config user.email "${GIT_USER_EMAIL}"
+                        """
+
+                        // Commit and push
+                        withCredentials([usernamePassword(
+                            credentialsId: "${GIT_CREDENTIAL}",
+                            usernameVariable: 'GIT_USERNAME',
+                            passwordVariable: 'GIT_PASSWORD'
+                        )]) {
+                            sh """
+                                # Show changes
+                                git diff ${HELM_VALUES_DIR}/${HELM_VALUES_FILE}
+
+                                # Stage changes
+                                git add ${HELM_VALUES_DIR}/${HELM_VALUES_FILE}
+
+                                # Commit with detailed message
+                                git commit -m "chore(${shortServiceName}): update image to ${params.image_tag}
+
+Automated update from Jenkins CI/CD pipeline
+
+- Service: ${params.service}
+- Image Tag: ${params.image_tag}
+- Source Commit: ${params.git_sha}
+- Author: ${params.git_author}
+- Source Commit Message: ${params.commit_message}
+
+Triggered by GitHub Actions webhook"
+
+                                # Push to remote
+                                git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@github.com/USERNAME/shopping-cart-infra.git ${INFRASTRUCTURE_BRANCH}
+                            """
+                        }
+
+                        echo "✓ Changes committed and pushed successfully"
+                    }
+                }
+            }
+        }
+
+        stage('Trigger Argo CD Sync') {
+            steps {
+                script {
+                    echo "=== Argo CD Sync ==="
+                    echo "Changes pushed to ${INFRASTRUCTURE_REPO}"
+                    echo "Argo CD will automatically detect and sync the changes"
+                    echo ""
+                    echo "To manually trigger sync:"
+                    echo "  argocd app sync shopping-cart-dev"
+                    echo ""
+                    echo "To check sync status:"
+                    echo "  argocd app get shopping-cart-dev"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                def shortServiceName = params.service.replaceFirst('shopping-cart-', '')
+                echo """
+╔═══════════════════════════════════════════════════════════════
+║ ✓ Image Update Successful
+╠═══════════════════════════════════════════════════════════════
+║ Service:    ${shortServiceName}
+║ Image Tag:  ${params.image_tag}
+║ Git SHA:    ${params.git_sha}
+║
+║ Next Steps:
+║ 1. Argo CD will automatically sync the deployment
+║ 2. Check deployment status: kubectl get pods -n shopping-cart-apps
+║ 3. Verify image: kubectl describe pod <pod-name> -n shopping-cart-apps
+╚═══════════════════════════════════════════════════════════════
+                """
+            }
+        }
+
+        failure {
+            script {
+                echo """
+╔═══════════════════════════════════════════════════════════════
+║ ✗ Image Update Failed
+╠═══════════════════════════════════════════════════════════════
+║ Service:    ${params.service}
+║ Image Tag:  ${params.image_tag}
+║
+║ Troubleshooting:
+║ 1. Check Jenkins logs for error details
+║ 2. Verify GitHub credentials are configured
+║ 3. Ensure yq tool is installed
+║ 4. Verify service name is in serviceMap
+║ 5. Check infrastructure repository access
+╚═══════════════════════════════════════════════════════════════
+                """
+            }
+        }
+
+        always {
+            // Clean up workspace
+            cleanWs(deleteDirs: true)
+        }
+    }
+}

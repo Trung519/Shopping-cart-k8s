@@ -1,0 +1,12 @@
+{{- if .Values.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: {name: {{ include "seller.name" . }}, namespace: {{ include "seller.namespace" . }}}
+spec:
+  host: {{ .Values.destinationRule.host }}
+  trafficPolicy:
+    connectionPool:
+      {{- toYaml .Values.destinationRule.connectionPool | nindent 6 }}
+    outlierDetection:
+      {{- toYaml .Values.destinationRule.outlierDetection | nindent 6 }}
+{{- end }}

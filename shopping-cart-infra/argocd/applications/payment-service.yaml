@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payment-service
+  namespace: cicd
+spec:
+  project: shopping-cart
+  sources:
+    - repoURL: https://github.com/wilddog64/shopping-cart-payment.git
+      targetRevision: HEAD
+      path: helmchart
+      helm:
+        valueFiles: [$values/values/local/24-payment-service.yaml]
+    - repoURL: https://github.com/wilddog64/config-secret-secure.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    name: ubuntu-k3s
+    namespace: shopping-cart-payment
+  syncPolicy:
+    syncOptions: [CreateNamespace=true]

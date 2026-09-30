@@ -1,0 +1,163 @@
+# Project Rules
+
+## Tech Stack
+
+- **Language**: TypeScript 5.x (strict mode)
+- **Framework**: React 18 with functional components and hooks only
+- **Build Tool**: Vite 5.x
+- **Routing**: React Router 6 (declarative routes in `src/App.tsx`)
+- **Server State**: TanStack Query (React Query v5) - all API calls go through hooks
+- **Client State**: Zustand v4 with `persist` middleware (only persists `itemCount`)
+- **API Client**: Axios with Bearer token interceptor
+- **Auth**: oidc-client-ts + react-oidc-context (Keycloak OAuth2/OIDC)
+- **Styling**: Tailwind CSS 3.x, class-variance-authority for component variants, tailwind-merge for class merging
+- **Icons**: lucide-react
+- **Testing**: Vitest + React Testing Library (unit), Playwright (E2E)
+- **Node.js**: 20+, npm 10+
+
+## Architecture
+
+Single-page application. Production build served by nginx inside a Docker container. Nginx proxies `/api/*` requests to backend microservices.
+
+```
+src/
+├── components/
+│   ├── layout/       # Header, Footer, Layout, ProtectedRoute
+│   └── ui/           # Reusable: Button, Card, Input, Badge, LoadingSpinner
+├── config/           # auth.ts (OIDC config), api.ts (endpoint URLs)
+├── hooks/            # TanStack Query hooks: useProducts, useCart, useOrders
+├── pages/            # Route components: HomePage, ProductsPage, CartPage, etc.
+├── services/         # Axios service functions: productService, cartService, orderService
+├── stores/           # Zustand stores: cartStore (persists itemCount only)
+├── test/             # setup.ts, test-utils.tsx (custom render with providers)
+├── types/            # index.ts with all TypeScript interfaces
+└── utils/            # cn.ts (class merging), format.ts (currency/date formatting)
+```
+
+Protected routes (require Keycloak login): `/cart`, `/orders`, `/orders/:id`
+Public routes: `/`, `/products`, `/products/:id`, `/callback`
+
+## Code Conventions
+
+- **Exports**: Named exports everywhere except page components (pages use default export)
+- **Components**: Functional components only; no class components
+- **Prop types**: Inline `interface` or `type` in the same file as the component
+- **Imports**: Use `@/` path alias for `src/` (configured in tsconfig.json and vite.config.ts)
+- **Styling**: Always use `cn()` from `@/utils/cn` for combining Tailwind classes; use `cva()` for variant-based components
+- **Prettier config**: no semicolons, single quotes, trailing commas (ES5), print width 100
+- **ESLint**: TypeScript strict, react-hooks, react-refresh plugins
+
+### Component variant pattern with cva
+```typescript
+const buttonVariants = cva('base-classes-here', {
+  variants: {
+    variant: { default: '...', outline: '...' },
+    size: { sm: '...', default: '...', lg: '...' },
+  },
+  defaultVariants: { variant: 'default', size: 'default' },
+})
+```
+
+### Class merging pattern
+```typescript
+import { cn } from '@/utils/cn'
+className={cn('base-classes', conditionalClass && 'extra-class', className)}
+```
+
+## Testing
+
+- **Unit tests**: Colocated with source files (e.g., `Button.test.tsx` lives next to `Button.tsx`)
+- **Test utilities**: Use `renderWithProviders()` from `src/test/test-utils.tsx` — wraps render with QueryClientProvider + AuthProvider + BrowserRouter
+- **Global setup**: `src/test/setup.ts` configures jest-dom matchers
+- **Mocking**: Mock `axios` and `react-oidc-context` hooks in unit tests
+- **Coverage**: Run `npm run test:coverage` — uses v8 coverage provider
+- **E2E**: Playwright specs live in `e2e/` directory; run `npm run test:e2e`
+
+When adding a new UI component:
+1. Create component in `src/components/ui/ComponentName.tsx`
+2. Create test in `src/components/ui/ComponentName.test.tsx`
+3. Test all variants, accessibility attributes, and interaction behavior
+
+## Build & Run
+
+```bash
+# Development
+npm run dev             # Dev server on http://localhost:3000
+
+# Testing
+npm test                # Run unit tests (Vitest, single run)
+npm run test:watch      # Watch mode
+npm run test:coverage   # With v8 coverage report
+npm run test:e2e        # Playwright E2E tests (headless)
+npm run test:e2e:ui     # Playwright with UI
+npm run test:e2e:headed # Playwright in headed mode
+
+# Quality
+npm run lint            # ESLint
+npm run format          # Prettier (writes changes)
+
+# Production
+npm run build           # tsc + vite build → dist/
+npm run preview         # Preview production build locally
+
+# Docker
+make docker-build       # Build image: shopping-cart/frontend:latest
+make docker-run         # Run container on port 3000
+
+# Kubernetes
+kubectl apply -k k8s/base   # Deploy to cluster using Kustomize
+kubectl kustomize k8s/base  # Preview manifests
+```
+
+Environment variables (all `VITE_` prefixed, set in `.env.local`):
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_KEYCLOAK_URL` | `http://localhost:8080` | Keycloak server URL |
+| `VITE_KEYCLOAK_REALM` | `shopping-cart` | Keycloak realm |
+| `VITE_CLIENT_ID` | `frontend` | OAuth2 client ID |
+| `VITE_ORDER_SERVICE_URL` | `/api/orders` | Order service prefix |
+| `VITE_PRODUCT_SERVICE_URL` | `/api/products` | Product service prefix |
+| `VITE_CART_SERVICE_URL` | `/api/cart` | Cart service prefix |
+
+## Key Patterns
+
+### Adding a new page
+1. Create `src/pages/NewPage.tsx` with a default export
+2. Add a `<Route>` in `src/App.tsx`
+3. Wrap with `<ProtectedRoute>` if authentication is required
+4. If the page needs API data: add service function in `src/services/`, add TanStack Query hook in `src/hooks/`
+
+### Adding a new API endpoint
+1. Add the URL constant to `src/config/api.ts`
+2. Add the service function to the appropriate file in `src/services/`
+3. Create a React Query hook in `src/hooks/`
+4. Never call axios directly from a component — always go through a hook
+
+### Authentication pattern
+- OIDC config is in `src/config/auth.ts`
+- JWT tokens stored in localStorage by oidc-client-ts under a key derived from realm + client ID
+- `src/services/api.ts` creates an Axios instance that attaches `Authorization: Bearer <token>` on every request via a request interceptor
+- `getAccessToken()` in `src/config/auth.ts` reads the token from localStorage directly
+- `ProtectedRoute` checks `auth.isAuthenticated` and calls `auth.signinRedirect()` if not
+
+### State management rules
+- **Server data** (products, cart, orders fetched from API): TanStack Query with `queryKey: [resource, params]`
+- **UI client state** (cart item count shown in header badge): Zustand `useCartStore`
+- **Form state**: local React `useState` or React Hook Form
+- QueryClient default: `staleTime: 5 minutes`, `retry: 1`, `refetchOnWindowFocus: false`
+- Only `itemCount` is persisted to localStorage (key: `cart-storage`), not full cart data
+
+### Backend services
+| Service | Technology | Port | API Prefix |
+|---|---|---|---|
+| Order Service | Java/Spring Boot | 8081 | `/api/orders` |
+| Product Catalog | Python/FastAPI | 8082 | `/api/products` |
+| Basket Service | Go/Gin | 8083 | `/api/cart` |
+| Keycloak | - | 8080 | `/realms/shopping-cart` |
+
+### Kubernetes deployment
+- 2 replicas, resource limits: 50m/64Mi requests, 200m/128Mi limits
+- Liveness probe: `GET /health` on port 80
+- Readiness probe: `GET /health` on port 80
+- Security context: `runAsNonRoot: true`, `runAsUser: 101` (nginx user), drops ALL capabilities
+- nginx.conf proxies `/api/*` → backend services

@@ -1,0 +1,249 @@
+# Project Rules
+
+## Tech Stack
+
+- **Orchestration**: Kubernetes (k3d/k3s for local, targeting single-node demo environment)
+- **GitOps**: Argo CD — this repo IS the source of truth for all deployed state
+- **Secret Management**: HashiCorp Vault + External Secrets Operator (ESO)
+- **Message Queue**: RabbitMQ (deployed, Stages 1-4 complete)
+- **Databases**: PostgreSQL StatefulSets (products, orders) + Redis StatefulSets (cart, orders-cache)
+- **Identity**: Keycloak + OpenLDAP in `identity` namespace
+- **Helm**: Used for application service charts (`chart/` directory)
+- **Kustomize**: Used for service `k8s/base/` directories in application repos
+- **CI/CD**: GitHub Actions (PR validation) → Jenkins (build/push) → this repo (Helm values update) → Argo CD (sync)
+- **Container Registry**: GHCR (ghcr.io) for production; local k3s image import for development
+- **Image Build**: Podman (not Docker) for local builds
+
+## Architecture
+
+Two-namespace model:
+- `shopping-cart-data` — StatefulSets (PostgreSQL, Redis, RabbitMQ), PVCs, ExternalSecrets
+- `shopping-cart-apps` — Application Deployments (frontend, product-catalog, basket, order), Services
+- `identity` — Keycloak + OpenLDAP
+- `argocd` — Argo CD itself
+- `vault` — HashiCorp Vault
+- `monitoring` — Prometheus stack (from observability-stack repo)
+
+```
+shopping-cart-infra/
+├── data-layer/         # PostgreSQL + Redis StatefulSets + ExternalSecrets
+├── argocd/
+│   ├── projects/       # AppProject definition (shopping-cart)
+│   └── applications/   # ArgoCD Application CRDs (basket, order, product-catalog, apps)
+├── identity/
+│   ├── keycloak/       # Keycloak Deployment + PostgreSQL + ConfigMap + Secret
+│   └── ldap/           # OpenLDAP Deployment + bootstrap config
+├── namespaces/         # Namespace definitions
+├── vault/              # Vault database secrets engine setup script
+├── chart/              # Helm chart for application services (app-level deployments)
+├── bin/                # Operational scripts
+├── docs/               # Documentation
+├── examples/           # Dockerfile templates + GitHub Actions templates
+└── jenkins/            # Jenkinsfile.update-image
+```
+
+## Code Conventions
+
+### YAML Formatting
+- 2-space indentation throughout
+- All Kubernetes resources must have both `app` and `app.kubernetes.io/name` labels
+- Use `app.kubernetes.io/part-of: shopping-cart` for Argo CD application labeling
+- Include namespace in every resource metadata block
+- Add `finalizers: [resources-finalizer.argocd.argoproj.io]` to all Argo CD Application resources
+
+### Kubernetes Manifests
+- Never hardcode secrets — all secrets come from ExternalSecrets (Vault) or are templated
+- StatefulSets must have `serviceName` matching a Headless Service
+- Argo CD Applications: always set `syncPolicy.automated.prune: true` and `selfHeal: true`
+- Image tags in Helm values must be updated by CI (Jenkins) — never commit `latest` in values files
+- Resource limits must always be specified; see demo environment targets below
+
+### Demo Environment Resource Limits (8GB single-node k3s)
+| Component | CPU Request | Memory Request | CPU Limit | Memory Limit |
+|---|---|---|---|---|
+| PostgreSQL | 100m | 256Mi | 500m | 512Mi |
+| Redis | 50m | 128Mi | 200m | 256Mi |
+| RabbitMQ | 100m | 256Mi | 500m | 512Mi |
+| Application pods | 50m | 64Mi | 200m | 256Mi |
+| Prometheus | 100m | 256Mi | 250m | 512Mi |
+
+### Security
+- Never commit secrets, passwords, or tokens to this repository
+- All credentials managed via Vault + ESO
+- Redis passwords: Vault KV at `secret/redis/cart` and `secret/redis/orders`
+- PostgreSQL credentials: Vault Database Secrets Engine (dynamic, 1h TTL)
+- Use `vault kv put` for static secrets; never `kubectl create secret` with literal passwords
+
+### Conventional Commits
+Use these prefixes for commit messages:
+- `infra:` — infrastructure changes (manifests, StatefulSets)
+- `feat:` — new infrastructure components
+- `fix:` — bug fixes in manifests or scripts
+- `chore:` — image tag updates, routine maintenance
+- `docs:` — documentation updates
+
+## Testing
+
+### Validating Kubernetes Manifests
+```bash
+# Dry-run apply to validate YAML syntax and schema
+kubectl apply --dry-run=client -f <manifest>
+
+# Validate Helm chart
+helm lint chart/
+helm template test chart/ -f chart/values.yaml --debug
+
+# Validate kustomize
+kubectl kustomize k8s/base/
+```
+
+### Checking Deployment Health
+```bash
+make status              # Overall cluster status
+make rabbitmq-status     # RabbitMQ cluster status
+make vault-status        # Vault seal status
+make argocd-status       # ArgoCD pod status
+kubectl get pods -n shopping-cart-data
+kubectl get pods -n shopping-cart-apps
+kubectl get externalsecrets -n shopping-cart-data  # ESO sync status
+```
+
+### Load Testing RabbitMQ
+```bash
+make load-test-quick       # 50 msgs/sec for 5s
+make load-test-burst       # 1000 msgs/sec for 30s
+make load-test-sustained   # 100 msgs/sec for 10min
+make load-test-alert       # Trigger Prometheus alerts
+```
+
+## Build & Run
+
+### Deploying Infrastructure from Scratch
+```bash
+# 1. Create namespaces
+kubectl apply -f namespaces/namespaces.yaml
+
+# 2. Configure Vault (run after Vault is initialized and unsealed)
+./vault/setup-database-secrets-engine.sh
+
+# 3. Deploy data layer
+kubectl apply -f data-layer/postgresql/products/
+kubectl apply -f data-layer/postgresql/orders/
+kubectl apply -f data-layer/redis/cart/
+kubectl apply -f data-layer/redis/orders-cache/
+kubectl apply -f data-layer/secrets/
+
+# 4. Deploy Argo CD applications
+kubectl apply -f argocd/projects/
+kubectl apply -f argocd/applications/
+
+# 5. Deploy identity stack
+kubectl apply -k identity/ldap/
+kubectl apply -k identity/keycloak/
+
+# Or use make targets:
+make argocd-deploy
+make identity-deploy
+```
+
+### Building and Importing Container Images (local k3s)
+```bash
+make images-build   # Build with podman
+make images-save    # Save to /tmp/*.tar
+make images-import  # Import into k3s (requires sudo)
+```
+
+### CI/CD Image Update Flow
+Jenkins reads `INFRA_REPO` and runs:
+```bash
+yq eval ".<service>.image.tag = '<git-sha>'" -i chart/values-dev.yaml
+git commit -m "chore: update <service> to <git-sha>"
+git push origin main
+# Argo CD detects change and syncs within 3 minutes (or via webhook)
+```
+
+### Useful Make Targets
+```bash
+make help               # Full target list
+make status             # K8s + RabbitMQ status
+make rabbitmq-ui        # Port-forward to RabbitMQ management (localhost:15672)
+make grafana            # Port-forward to Grafana (localhost:3000)
+make prometheus         # Port-forward to Prometheus (localhost:9090)
+make vault-ui           # Port-forward to Vault UI (localhost:8200)
+make argocd-ui          # Port-forward to ArgoCD UI (localhost:8080)
+make keycloak-ui        # Port-forward to Keycloak UI (localhost:8080)
+make db-orders-shell    # psql into orders database
+make db-products-shell  # psql into products database
+make debug-vault-unseal # Unseal Vault using stored key
+make debug-events       # Show recent K8s events
+```
+
+## Key Patterns
+
+### Vault ExternalSecret Pattern
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: <secret-name>
+  namespace: shopping-cart-data
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: <k8s-secret-name>
+  data:
+    - secretKey: username
+      remoteRef:
+        key: database/creds/<role>
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: database/creds/<role>
+        property: password
+```
+
+### Argo CD Application Pattern
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: <service-name>
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopping-cart
+  source:
+    repoURL: https://github.com/your-org/<service-repo>.git
+    targetRevision: HEAD
+    path: k8s/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shopping-cart-apps
+  syncPolicy:
+    automated: { prune: true, selfHeal: true, allowEmpty: false }
+    syncOptions: [CreateNamespace=true, PrunePropagationPolicy=foreground]
+    retry: { limit: 5, backoff: { duration: 5s, factor: 2, maxDuration: 3m } }
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers: [/spec/replicas]  # Ignore HPA-managed replicas
+```
+
+### RabbitMQ Message Schema Pattern
+All messages use a common envelope:
+```json
+{
+  "id": "uuid-v4",
+  "type": "order.created",
+  "version": "1.0",
+  "timestamp": "ISO8601",
+  "source": "order-service",
+  "correlationId": "uuid-v4",
+  "data": { ... }
+}
+```
+Exchanges: `events` (topic), `commands` (direct), `dlx` (fanout for dead letters).
+Routing key convention: `<domain>.<event>.<optional-qualifier>`.

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Committed pre-push hook: refuses direct pushes to 'main'.
+# Activate per-clone (core.hooksPath cannot be committed):
+#   git config core.hooksPath .githooks
+# Intentional override for a single push: ALLOW_MAIN_PUSH=1 git push ...
+set -euo pipefail
+
+remote="$1"
+
+while IFS=' ' read -r local_ref _ remote_ref _; do
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    if [[ "${ALLOW_MAIN_PUSH:-0}" == "1" ]]; then
+      echo "pre-push: ALLOW_MAIN_PUSH=1 — bypassing main-guard for '$local_ref' → ${remote}/main" >&2
+    else
+      echo "pre-push: refusing to push '$local_ref' directly to ${remote}/main" >&2
+      echo "  Use a feature branch + PR instead." >&2
+      echo "  To override intentionally: ALLOW_MAIN_PUSH=1 git push ..." >&2
+      exit 1
+    fi
+  fi
+done

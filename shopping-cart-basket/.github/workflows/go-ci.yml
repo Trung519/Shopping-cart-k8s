@@ -1,0 +1,79 @@
+name: Go CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.57.2
+
+  test:
+    name: Test
+    needs: [lint]
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Download dependencies
+        run: go mod download
+      - name: Run tests
+        run: go test -v ./...
+
+  security-scan:
+    name: Security Scan
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+        continue-on-error: true
+
+  publish:
+    name: Publish
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: wilddog64/shopping-cart-infra/.github/workflows/build-push-deploy.yml@999f8d70277b92d928412ff694852b05044dbb75
+    with:
+      service-name: shopping-cart-basket
+      image-name: ghcr.io/wilddog64/shopping-cart-basket
+    permissions:
+      contents: write
+      packages: write
+    secrets:
+      PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}

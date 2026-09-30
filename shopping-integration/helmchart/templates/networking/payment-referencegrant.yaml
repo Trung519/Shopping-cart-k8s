@@ -1,0 +1,9 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata: {name: allow-shopping-cart-gateway, namespace: {{ .Values.namespaces.payment }}}
+spec:
+  from:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: {{ .Values.namespaces.apps }}}
+  to:
+    - {group: "", kind: Service, name: {{ .Values.gateway.routes.payment.service }}}
+

@@ -1,0 +1,189 @@
+namespaces:
+  apps: shopping-cart-apps
+  data: shopping-cart-data
+  payment: shopping-cart-payment
+  identity: shopping-cart-identity
+  gateway: shopping-cart-gateway
+  vault: vault
+  externalSecrets: external-secrets
+namespaceLabels:
+  apps: {istio-injection: enabled}
+  data: {istio-injection: disabled}
+  payment: {istio-injection: enabled, pci-scope: "true"}
+  identity: {istio-injection: enabled}
+  gateway: {istio-injection: disabled}
+images:
+  postgresqlRepmgr: {repository: bitnamilegacy/postgresql-repmgr, tag: 15.9.0-debian-12-r0, pullPolicy: IfNotPresent}
+  pgpool: {repository: bitnamilegacy/pgpool, tag: 4.6.2-debian-12-r8, pullPolicy: IfNotPresent}
+  postgresql: {repository: postgres, tag: 15-alpine, pullPolicy: IfNotPresent}
+  rabbitmq: {repository: rabbitmq, tag: 3.12-management-alpine, pullPolicy: IfNotPresent}
+  redis: {repository: redis, tag: 7-alpine, pullPolicy: IfNotPresent}
+  keycloak: {repository: quay.io/keycloak/keycloak, tag: "24.0", pullPolicy: IfNotPresent}
+  busybox: {repository: busybox, tag: 1.36.1, pullPolicy: IfNotPresent}
+postgresql:
+  port: 5432
+  username: postgres
+  orders:
+    name: postgresql-orders
+    database: orders
+    replicas: 2
+    secretName: postgres-orders-admin
+    remoteKey: shopping-cart/data/postgresql-orders
+    storage: 5Gi
+    initSql: "SELECT 1;"
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    pgpool:
+      enabled: true
+      replicas: 2
+      loadBalancing: "no"
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {cpu: 250m, memory: 256Mi}
+  products:
+    name: postgresql-products
+    database: products
+    replicas: 2
+    secretName: postgres-products-admin
+    remoteKey: shopping-cart/data/postgresql-products
+    storage: 5Gi
+    initSql: "SELECT 1;"
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    pgpool:
+      enabled: true
+      replicas: 2
+      loadBalancing: "no"
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {cpu: 250m, memory: 256Mi}
+  payment:
+    name: postgresql-payment
+    database: payments
+    replicas: 1
+    secretName: postgres-payment-admin
+    remoteKey: shopping-cart/data/postgresql-payment
+    storage: 5Gi
+    initSql: "SELECT 1;"
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+  marketplace:
+    name: postgresql-marketplace
+    database: postgres
+    replicas: 1
+    secretName: postgres-marketplace-credentials
+    remoteKey: shopping-cart/data/postgresql-marketplace
+    storage: 5Gi
+    users:
+      seller: {username: seller_service, database: seller_service}
+      inventory: {username: inventory_service, database: inventory_service}
+      checkout: {username: checkout_service, database: checkout_service}
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+rabbitmq:
+  name: rabbitmq
+  replicas: 1
+  secretName: rabbitmq-credentials
+  remoteKey: shopping-cart/data/rabbitmq
+  storage: 10Gi
+  storageClassName: local-path
+  ports: {amqp: 5672, management: 15672, epmd: 4369, distribution: 25672, prometheus: 15692}
+  config:
+    enabled_plugins: "[rabbitmq_management,rabbitmq_prometheus]."
+    rabbitmq.conf: |
+      loopback_users.guest = false
+      management.tcp.port = 15672
+      prometheus.tcp.port = 15692
+      load_definitions = /etc/rabbitmq/definitions.json
+  definitions:
+    exchanges:
+      - {name: events, vhost: /, type: topic, durable: true, auto_delete: false, internal: false, arguments: {}}
+    queues: []
+    bindings: []
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+redis:
+  name: redis-cart
+  replicas: 1
+  secretName: redis-cart-secret
+  remoteKey: shopping-cart/data/redis-cart
+  port: 6379
+  storage: 2Gi
+  maxMemory: 200mb
+  maxMemoryPolicy: allkeys-lru
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 200m, memory: 256Mi}
+keycloak:
+  name: keycloak
+  replicas: 1
+  servicePort: 80
+  secretName: keycloak-secrets
+  remoteKey: shopping-cart/identity/keycloak
+  port: 8080
+  database:
+    name: postgres-keycloak
+    database: keycloak
+    username: keycloak
+    storage: 5Gi
+    image: {repository: postgres, tag: 16-alpine, pullPolicy: IfNotPresent}
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+  args: [start-dev, --import-realm]
+  config:
+    KC_DB: postgres
+    KC_DB_URL_HOST: postgres-keycloak
+    KC_DB_URL_PORT: "5432"
+    KC_DB_URL_DATABASE: keycloak
+    KC_HTTP_ENABLED: "true"
+    KC_HEALTH_ENABLED: "true"
+    KC_METRICS_ENABLED: "true"
+    KC_HOSTNAME_STRICT: "false"
+    KC_PROXY_HEADERS: xforwarded
+  realmImport: |
+    {"realm":"shopping-cart","enabled":true,"registrationAllowed":true,"loginWithEmailAllowed":true}
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+vault:
+  serviceName: vault
+  servicePort: 8200
+externalSecrets:
+  storeName: vault-backend
+  refreshInterval: 1h
+  vaultServer: http://vault.vault.svc.cluster.local:8200
+  vaultPath: secret
+  vaultVersion: v2
+  authMountPath: kubernetes
+  authRole: external-secrets
+  serviceAccountName: external-secrets
+gateway:
+  name: nginx-gateway
+  className: istio
+  serviceType: ClusterIP
+  nodePort: 30080
+  listenerPort: 80
+  externalPort: 8080
+  protocol: HTTP
+  hosts:
+    application: shopping-cart.localhost
+    applicationAliases: []
+    keycloak: keycloak.localhost
+    vault: vault.localhost
+  routes:
+    bff: {path: /api/v2, service: commerce-bff, namespace: shopping-cart-apps, port: 80}
+    frontend: {path: /, service: frontend, namespace: shopping-cart-apps, port: 80}
+    products: {path: /api/products, service: product-catalog, namespace: shopping-cart-apps, port: 80}
+    orders: {path: /api/orders, service: order-service, namespace: shopping-cart-apps, port: 80}
+    cart: {path: /api/cart, rewrite: /api/v1/cart, service: basket-service, namespace: shopping-cart-apps, port: 8083}
+    auth: {path: /api/auth, service: basket-service, namespace: shopping-cart-apps, port: 8083}
+    payment: {path: /api/payments, rewrite: /api/v1/payments, service: payment-service, namespace: shopping-cart-payment, port: 80}
+meshSecurity:
+  enabled: true
+  mode: STRICT

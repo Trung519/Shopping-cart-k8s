@@ -1,0 +1,43 @@
+# Kubernetes secrets and sensitive data
+*.secret.yaml.local
+*.secrets.yaml.local
+*-secret.yaml.local
+
+# Helm temporary files
+chart/charts/
+chart/*.tgz
+.helmignore
+
+# Kustomize
+kustomization.yaml.bak
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+scratch/
+temp/
+
+# Local testing artifacts
+test-results/
+coverage/
+
+# Environment files (may contain sensitive data)
+.env
+.env.local
+*.env.local
+
+# Backup files
+*.bak
+*.backup
+
+# Backups
+backups/
+.coverage

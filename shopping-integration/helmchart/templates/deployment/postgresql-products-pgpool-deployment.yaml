@@ -1,0 +1,4 @@
+{{- if .Values.postgresql.products.pgpool.enabled }}
+{{ include "integration.pgpool" (dict "root" . "db" .Values.postgresql.products) }}
+{{- end }}
+

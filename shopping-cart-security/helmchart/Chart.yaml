@@ -1,0 +1,6 @@
+apiVersion: v2
+name: shopping-cart-security
+description: Focused Istio authorization policies for ShopCart ingress
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

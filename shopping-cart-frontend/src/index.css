@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+
+  body {
+    @apply bg-[#f6f8fc] text-ink antialiased;
+    min-width: 320px;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    letter-spacing: 0;
+  }
+
+  ::selection {
+    @apply bg-mint/40 text-primary-950;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .market-container {
+    @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-10;
+  }
+
+  .section-title {
+    @apply text-2xl font-extrabold tracking-[-0.025em] text-ink sm:text-3xl;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+
+  .surface-card {
+    @apply rounded-card border border-slate-200/80 bg-white shadow-soft;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-primary-600;
+  }
+
+  .page-heading {
+    @apply text-2xl font-extrabold tracking-[-0.03em] text-ink sm:text-3xl;
+  }
+
+  .muted-copy {
+    @apply text-sm leading-6 text-slate-500;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

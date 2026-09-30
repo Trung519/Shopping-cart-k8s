@@ -1,0 +1,158 @@
+# Project Rules
+
+## Tech Stack
+
+- **Language**: Java 21 (LTS, virtual threads available)
+- **Build Tool**: Maven 3.9+ with multi-module POM
+- **Framework**: Spring Boot 3.2, Spring Cloud 2023.0
+- **RabbitMQ**: Spring AMQP (`spring-boot-starter-amqp`, `RabbitTemplate`, `SimpleMessageListenerContainer`)
+- **Vault**: Spring Cloud Vault (`spring-cloud-starter-vault-config`, `VaultTemplate`)
+- **Circuit Breaker**: Resilience4j 2.2 (`resilience4j-spring-boot3`, `resilience4j-circuitbreaker`, `resilience4j-retry`)
+- **Metrics**: Micrometer + Prometheus (`micrometer-registry-prometheus`)
+- **Health**: Spring Boot Actuator (`spring-boot-starter-actuator`)
+- **Logging**: SLF4J + Logback (`@Slf4j` from Lombok)
+- **Validation**: Jakarta Bean Validation (`spring-boot-starter-validation`)
+- **Lombok**: `@Data`, `@Slf4j`, `@Builder`, `@Value` annotations
+- **Testing**: JUnit 5, Mockito, Testcontainers 1.19, AssertJ, spring-rabbit-test
+- **Coverage**: JaCoCo 0.8.11
+
+## Architecture
+
+Multi-module Maven project. Three child modules under parent POM:
+
+```
+rabbitmq-client-java/           (parent POM: com.shoppingcart:rabbitmq-client-parent:1.0.0-SNAPSHOT)
+├── rabbitmq-client/            (com.shoppingcart:rabbitmq-client) — core library JAR
+│   └── src/main/java/com/shoppingcart/rabbitmq/
+│       ├── RabbitMQClientAutoConfiguration.java  — Spring Boot auto-configuration entry point
+│       ├── config/RabbitMQProperties.java        — @ConfigurationProperties(prefix="rabbitmq")
+│       ├── connection/ConnectionManager.java     — AMQP ConnectionFactory management
+│       ├── vault/VaultCredentialManager.java     — Spring Cloud Vault credential fetch/renewal
+│       ├── vault/VaultCredentials.java           — Credential value object
+│       ├── publisher/Publisher.java              — RabbitTemplate-based publisher, confirm mode
+│       ├── publisher/PublishOptions.java         — Builder pattern, exchange/routingKey/headers
+│       ├── publisher/BatchPublisher.java         — Batch publish with confirms
+│       ├── consumer/Consumer.java                — SimpleMessageListenerContainer-based consumer
+│       ├── consumer/ConsumeOptions.java          — Builder: queue, autoAck, prefetch, QueueOptions
+│       ├── consumer/MessageHandler.java          — @FunctionalInterface for message callbacks
+│       ├── retry/RetryConfig.java                — Resilience4j RetryRegistry from RabbitMQProperties
+│       ├── circuitbreaker/CircuitBreakerConfig.java — Resilience4j CircuitBreakerRegistry
+│       ├── metrics/RabbitMQMetrics.java          — Micrometer MeterRegistry wrappers
+│       ├── health/RabbitMQHealthIndicator.java   — Spring Actuator HealthIndicator
+│       ├── health/VaultHealthIndicator.java      — Spring Actuator HealthIndicator for Vault
+│       ├── dlq/DLQManager.java                   — DLQ infrastructure setup
+│       ├── dlq/DLQConfig.java                    — DLQ configuration record
+│       ├── dlq/DLQMessage.java                   — Dead letter message wrapper
+│       └── exception/                            — Typed exceptions (hierarchy)
+├── rabbitmq-cli/               — Spring Boot app with PublisherCli + ConsumerCli
+└── rabbitmq-examples/          — Spring Boot app with DemoExample, PublisherExample, ConsumerExample
+```
+
+Auto-configuration is registered via:
+`rabbitmq-client/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+
+## Code Conventions
+
+- **Style**: Google Java Style Guide
+- **Logging**: `@Slf4j` (Lombok); use `log.debug()`, `log.info()`, `log.warn()`, `log.error()` with `{}` placeholders; never use string concatenation in log calls
+- **Null handling**: Use `Optional<T>` instead of returning null; use `@NonNull` where appropriate
+- **DTOs / Value objects**: Prefer Java records or Lombok `@Value` for immutable objects
+- **Local variables**: Use `var` when the type is obvious from the right-hand side
+- **Builders**: Use Lombok `@Builder` on options/config classes; always implement `of()` static factory as convenience alias for `builder().build()` with required fields
+- **Validation**: Annotate `@ConfigurationProperties` classes with `@Validated` and Jakarta Constraint annotations (`@NotBlank`, `@Min`, `@Max`)
+- **Auto-configuration**: Use `@ConditionalOnMissingBean`, `@ConditionalOnBean`, `@ConditionalOnProperty` to make all beans overridable
+- **Exception hierarchy**: All exceptions extend `RabbitMQException` (RuntimeException); `ConnectionException`, `PublishException`, `ConsumeException`, `CircuitBreakerOpenException`
+- **Commit messages**: Conventional commits format: `type(scope): subject` — types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
+
+## Testing
+
+Test class naming: `*Test` for unit, `*IT` for integration (Failsafe picks up `*IT`).
+Surefire excludes `*IT.java` and `*IntegrationTest.java`.
+
+```bash
+make test            # unit tests (mvn test -pl rabbitmq-client -DskipITs)
+make test-int        # integration tests with Docker (mvn verify -Pintegration)
+make test-all        # all tests
+make coverage        # JaCoCo report -> rabbitmq-client/target/site/jacoco/index.html
+mvn test -Dtest=PublishOptionsTest          # single class
+mvn test -Dtest=PublishOptionsTest#testBuilderDefaults  # single method
+mvn test -Dtest="*OptionsTest"              # pattern match
+```
+
+Unit test patterns:
+- Extend nothing; use `@ExtendWith(MockitoExtension.class)` for Mockito
+- Use `@Mock` / `@InjectMocks`; never `new` the class under test directly when it has dependencies
+- Use AssertJ: `assertThat(x).isEqualTo(y)`, `assertThatThrownBy(() -> ...).isInstanceOf(...)`
+- Follow Given/When/Then structure with comments
+- Test method names: `should<Behavior>_when<Condition>()` pattern
+
+Integration test patterns:
+- Use `@Testcontainers` + `@Container` static fields
+- `@DynamicPropertySource` to inject container ports into Spring context
+- Use unique queue names per test: `"test-queue-" + System.currentTimeMillis()`
+- Always `@DirtiesContext` if Spring context state is mutated
+
+## Build & Run
+
+```bash
+# Build
+make build       # mvn compile
+make package     # mvn package -DskipTests
+make install     # mvn install -DskipTests
+make full-build  # mvn verify (with tests)
+
+# Run Demo (recommended — single command, no setup)
+make demo        # Spring Boot: DemoExample with demo profile (port 30672, demo/demo, no Vault)
+
+# Run Examples separately
+make run-publisher  # PublisherExample standalone
+make run-consumer   # ConsumerExample standalone (waits indefinitely)
+
+# CLI Tools
+make cli-demo    # publish + consume in sequence (note: known issue, see below)
+make cli-consume [QUEUE=name] [EXCHANGE=name]
+make cli-publish [EVENT=type] [PAYLOAD=json] [COUNT=n]
+
+# Dev Environment (Docker)
+make dev-setup   # start containers + configure Vault
+make dev-start   # docker compose up -d (RabbitMQ + Vault)
+make dev-stop    # docker compose down
+make dev-logs    # docker compose logs -f
+
+# Code Quality
+make lint        # checkstyle + spotbugs
+make format      # spotless:apply
+make format-check
+make docs        # javadoc:aggregate
+
+# Utility
+make deps        # dependency tree
+make deps-updates  # check for updates
+```
+
+Override connection settings:
+```bash
+RABBITMQ_HOST=localhost RABBITMQ_PORT=5672 RABBITMQ_USERNAME=guest RABBITMQ_PASSWORD=guest make demo
+```
+
+Demo profile config (`application-demo.yml`): port=30672, credentials=demo/demo, vault.enabled=false, circuit-breaker.enabled=false.
+
+## Key Patterns
+
+### Auto-Configuration
+`RabbitMQClientAutoConfiguration` registers all beans. `ConnectionManager` has two variants: one that takes `VaultCredentialManager` (when Vault enabled) and one for static credentials (when `rabbitmq.vault.enabled=false`). All beans use `@ConditionalOnMissingBean` so consumers can override any component.
+
+### Configuration Properties
+`RabbitMQProperties` uses `@ConfigurationProperties(prefix = "rabbitmq")` with nested static inner classes: `Pool`, `Retry`, `CircuitBreaker`, `Vault`. Lombok `@Data` generates getters/setters. `@Validated` + Jakarta annotations enforce constraints at startup.
+
+### Publisher
+`Publisher` wraps `RabbitTemplate`. Confirm mode via `rabbitTemplate.invoke()` + `waitForConfirms()`. Returns callback set for `setReturnsCallback()` to log unroutable messages. Body serialized via `ObjectMapper` (JSON) unless already `byte[]` or `String`.
+
+### Consumer
+`Consumer` creates and manages `SimpleMessageListenerContainer` instances keyed by consumer ID. Manual ack via `ChannelAwareMessageListener`; calls `channel.basicAck()` on success and `channel.basicNack()` on failure. `stopAll()` destroys all containers.
+
+### Metrics
+`RabbitMQMetrics` wraps `MeterRegistry`. `trackPublish()` / `trackConsume()` return `Runnable` completions (same deferred-function pattern as Go/Python siblings). `recordPublishError()` / `recordConsumeError()` increment error counters.
+
+### Known Issue: CLI Tools
+`PublisherCli` and `ConsumerCli` both implement `CommandLineRunner`. When packaged in the same JAR, Spring Boot runs both with the same args. Workaround: use `make demo` (DemoExample) instead of `make cli-demo`.

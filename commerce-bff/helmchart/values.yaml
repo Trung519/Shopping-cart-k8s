@@ -1,0 +1,75 @@
+serviceName: commerce-bff
+namespaceOverride: shopping-cart-apps
+replicaCount: 1
+deployment:
+  minReadySeconds: 10
+  terminationGracePeriodSeconds: 30
+  preStopDelaySeconds: 10
+image:
+  repository: commerce-bff
+  tag: v0.1.3
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+commonLabels: {}
+podAnnotations:
+  prometheus.io/scrape: "false"
+serviceAccount:
+  create: true
+  name: commerce-bff
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  portName: http
+containerPort: 8080
+config:
+  HTTP_ADDRESS: :8080
+  PUBLIC_URL: http://shopping-cart.localhost:8080
+  FRONTEND_URL: http://shopping-cart.localhost:8080
+  COOKIE_SECURE: "false"
+  SESSION_TTL: 8h
+  REDIS_ADDRESS: redis-cart.shopping-cart-data.svc.cluster.local:6379
+  REDIS_DB: "2"
+  OIDC_ISSUER_INTERNAL: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart
+  OIDC_AUTHORIZE_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/auth
+  OIDC_END_SESSION_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/logout
+  OIDC_CLIENT_ID: commerce-bff
+  OIDC_REDIRECT_URL: http://shopping-cart.localhost:8080/api/v2/auth/callback
+  PRODUCT_CATALOG_URL: http://product-catalog.shopping-cart-apps.svc.cluster.local
+  BASKET_URL: http://basket-service.shopping-cart-apps.svc.cluster.local:8083
+  ORDER_URL: http://order-service.shopping-cart-apps.svc.cluster.local
+  PAYMENT_URL: http://payment-service.shopping-cart-payment.svc.cluster.local
+  ACCOUNT_URL: http://account-service.shopping-cart-apps.svc.cluster.local
+  SELLER_URL: http://seller-service.shopping-cart-apps.svc.cluster.local
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  storeKind: ClusterSecretStore
+  targetName: commerce-bff-secrets
+  refreshInterval: 1h
+  data:
+    - secretKey: SESSION_SECRET
+      remoteRef: {key: shopping-cart/apps/commerce-bff, property: sessionSecret}
+    - secretKey: OIDC_CLIENT_SECRET
+      remoteRef: {key: shopping-cart/apps/commerce-bff, property: oidcClientSecret}
+    - secretKey: REDIS_PASSWORD
+      remoteRef: {key: shopping-cart/data/redis-cart, property: password}
+probes:
+  startup: {path: /health/ready, initialDelaySeconds: 2, periodSeconds: 3, timeoutSeconds: 2, failureThreshold: 30}
+  liveness: {path: /health/live, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+  readiness: {path: /health/ready, initialDelaySeconds: 3, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {cpu: 300m, memory: 192Mi}
+podSecurityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, fsGroup: 65532}
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}
+affinity: {}
+destinationRule:
+  enabled: true
+  host: commerce-bff.shopping-cart-apps.svc.cluster.local
+  connectionPool:
+    http: {http1MaxPendingRequests: 100, maxRequestsPerConnection: 100}
+  outlierDetection: {consecutive5xxErrors: 5, interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50}

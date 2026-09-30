@@ -1,0 +1,193 @@
+---
+# LDAP Bootstrap Configuration - Creates organizational structure and groups
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ldap-bootstrap
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: ldap
+    app.kubernetes.io/component: directory
+data:
+  # Organizational Units
+  01-organizational-units.ldif: |
+    # Users OU
+    dn: ou=users,dc=shopping-cart,dc=local
+    objectClass: organizationalUnit
+    ou: users
+    description: All user accounts
+
+    # Groups OU
+    dn: ou=groups,dc=shopping-cart,dc=local
+    objectClass: organizationalUnit
+    ou: groups
+    description: All groups
+
+    # Service Accounts OU
+    dn: ou=service-accounts,dc=shopping-cart,dc=local
+    objectClass: organizationalUnit
+    ou: service-accounts
+    description: Service account users
+
+  # Groups - Platform Level
+  02-platform-groups.ldif: |
+    # Platform Admins Group
+    dn: cn=platform-admins,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: platform-admins
+    description: Platform administrators with full access
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Platform Developers Group
+    dn: cn=platform-developers,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: platform-developers
+    description: Developers who can deploy and manage applications
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Platform Operators Group
+    dn: cn=platform-operators,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: platform-operators
+    description: Operators who can view and monitor applications
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+  # Groups - ArgoCD Access
+  03-argocd-groups.ldif: |
+    # ArgoCD Admins
+    dn: cn=argocd-admins,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: argocd-admins
+    description: ArgoCD administrators
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # ArgoCD Developers (can sync apps)
+    dn: cn=argocd-developers,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: argocd-developers
+    description: Can view and sync ArgoCD applications
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # ArgoCD Viewers (read-only)
+    dn: cn=argocd-viewers,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: argocd-viewers
+    description: Read-only access to ArgoCD
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+  # Groups - Application Level
+  04-application-groups.ldif: |
+    # Order Service Admins
+    dn: cn=order-admins,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: order-admins
+    description: Order service administrators
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Order Service Users
+    dn: cn=order-users,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: order-users
+    description: Order service regular users
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Product Catalog Admins
+    dn: cn=catalog-admins,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: catalog-admins
+    description: Product catalog administrators
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Product Catalog Users
+    dn: cn=catalog-users,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: catalog-users
+    description: Product catalog regular users
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+  # Groups - Monitoring
+  05-monitoring-groups.ldif: |
+    # Grafana Admins
+    dn: cn=grafana-admins,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: grafana-admins
+    description: Grafana administrators
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Grafana Editors
+    dn: cn=grafana-editors,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: grafana-editors
+    description: Can edit Grafana dashboards
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+    # Grafana Viewers
+    dn: cn=grafana-viewers,ou=groups,dc=shopping-cart,dc=local
+    objectClass: groupOfNames
+    cn: grafana-viewers
+    description: Read-only access to Grafana
+    member: uid=admin,ou=users,dc=shopping-cart,dc=local
+
+  # Sample Users
+  06-sample-users.ldif: |
+    # Admin User
+    dn: uid=admin,ou=users,dc=shopping-cart,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    uid: admin
+    cn: Platform Admin
+    sn: Admin
+    givenName: Platform
+    mail: admin@shopping-cart.local
+    userPassword: REPLACE_WITH_LOCAL_SECRET
+
+    # Developer User
+    dn: uid=developer,ou=users,dc=shopping-cart,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    uid: developer
+    cn: Developer User
+    sn: Developer
+    givenName: Dev
+    mail: developer@shopping-cart.local
+    userPassword: REPLACE_WITH_LOCAL_SECRET
+
+    # Operator User
+    dn: uid=operator,ou=users,dc=shopping-cart,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    uid: operator
+    cn: Operator User
+    sn: Operator
+    givenName: Ops
+    mail: operator@shopping-cart.local
+    userPassword: REPLACE_WITH_LOCAL_SECRET
+
+  # Service Accounts
+  07-service-accounts.ldif: |
+    # Order Service Account
+    dn: uid=svc-order,ou=service-accounts,dc=shopping-cart,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    uid: svc-order
+    cn: Order Service
+    sn: Service
+    givenName: Order
+    mail: svc-order@shopping-cart.local
+    description: Service account for Order Service
+
+    # Product Catalog Service Account
+    dn: uid=svc-catalog,ou=service-accounts,dc=shopping-cart,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    uid: svc-catalog
+    cn: Product Catalog Service
+    sn: Service
+    givenName: Catalog
+    mail: svc-catalog@shopping-cart.local
+    description: Service account for Product Catalog Service

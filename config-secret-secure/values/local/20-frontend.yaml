@@ -1,0 +1,8 @@
+namespaceOverride: shopping-cart-apps
+replicaCount: 1
+image:
+  repository: shopping-cart-frontend
+  tag: v2.1.1
+  pullPolicy: IfNotPresent
+gateway:
+  applicationHost: shopping-cart.localhost

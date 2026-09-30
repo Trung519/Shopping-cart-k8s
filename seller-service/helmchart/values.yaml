@@ -1,0 +1,39 @@
+serviceName: seller-service
+namespaceOverride: shopping-cart-apps
+replicaCount: 1
+image: {repository: seller-service, tag: v0.1.1, pullPolicy: IfNotPresent}
+commonLabels: {}
+serviceAccount: {create: true, name: seller-service}
+service: {type: ClusterIP, port: 80, targetPort: 8080, portName: http}
+containerPort: 8080
+config:
+  HTTP_ADDRESS: :8080
+  DB_HOST: postgresql-marketplace.shopping-cart-data.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: seller_service
+  DB_USER: seller_service
+  DB_SSLMODE: disable
+  ACCOUNT_SERVICE_URL: http://account-service.shopping-cart-apps.svc.cluster.local
+externalSecret:
+  enabled: true
+  storeName: vault-backend
+  storeKind: ClusterSecretStore
+  targetName: seller-service-secrets
+  refreshInterval: 1h
+  data:
+    - secretKey: DB_PASSWORD
+      remoteRef: {key: shopping-cart/data/postgresql-marketplace, property: sellerPassword}
+    - secretKey: SERVICE_AUTH_TOKEN
+      remoteRef: {key: shopping-cart/shared/service-auth, property: token}
+probes:
+  startup: {path: /health/ready, initialDelaySeconds: 2, periodSeconds: 3, timeoutSeconds: 2, failureThreshold: 40}
+  liveness: {path: /health/live, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
+  readiness: {path: /health/ready, initialDelaySeconds: 3, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 300m, memory: 192Mi}}
+podSecurityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, fsGroup: 65532}
+containerSecurityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+destinationRule:
+  enabled: true
+  host: seller-service.shopping-cart-apps.svc.cluster.local
+  connectionPool: {http: {http1MaxPendingRequests: 50, maxRequestsPerConnection: 50}}
+  outlierDetection: {consecutive5xxErrors: 5, interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50}

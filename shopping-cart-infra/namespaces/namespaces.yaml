@@ -1,0 +1,42 @@
+---
+# Data Layer Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopping-cart-data
+  labels:
+    app.kubernetes.io/name: shopping-cart
+    app.kubernetes.io/part-of: shopping-cart
+    app.kubernetes.io/component: data
+    environment: dev
+    tier: data
+    istio-injection: enabled
+---
+# Application Layer Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopping-cart-apps
+  labels:
+    app.kubernetes.io/name: shopping-cart
+    app.kubernetes.io/part-of: shopping-cart
+    app.kubernetes.io/component: application
+    environment: dev
+    tier: application
+    istio-injection: enabled
+---
+# Payment Service Namespace (PCI DSS Isolated)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopping-cart-payment
+  labels:
+    app.kubernetes.io/name: payment-service
+    app.kubernetes.io/part-of: shopping-cart
+    app.kubernetes.io/component: payment
+    environment: dev
+    tier: payment
+    pci-scope: "true"
+    istio-injection: enabled
+  annotations:
+    description: "Isolated namespace for PCI DSS compliant payment service"

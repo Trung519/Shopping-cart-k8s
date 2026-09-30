@@ -1,0 +1,10 @@
+namespaceOverride: shopping-cart-apps
+replicaCount: 1
+image: {repository: seller-service, tag: v0.1.1, pullPolicy: IfNotPresent}
+config:
+  DB_HOST: postgresql-marketplace.shopping-cart-data.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: seller_service
+  DB_USER: seller_service
+  DB_SSLMODE: disable
+  ACCOUNT_SERVICE_URL: http://account-service.shopping-cart-apps.svc.cluster.local

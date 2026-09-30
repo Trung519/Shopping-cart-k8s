@@ -1,0 +1,6 @@
+apiVersion: v2
+name: order-service
+description: Shopping cart order service Helm chart
+type: application
+version: 1.0.1
+appVersion: "1.0.3"

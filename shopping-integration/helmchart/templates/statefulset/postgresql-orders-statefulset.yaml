@@ -1,0 +1,2 @@
+{{ include "integration.postgresqlRepmgr" (dict "root" . "db" .Values.postgresql.orders) }}
+

@@ -1,0 +1,24 @@
+namespaceOverride: shopping-cart-payment
+replicaCount: 1
+image:
+  repository: shopping-cart-payment
+  tag: v0.1.1
+  pullPolicy: IfNotPresent
+config:
+  SERVER_PORT: "8084"
+  SPRING_CLOUD_VAULT_ENABLED: "false"
+  DB_HOST: postgresql-payment.shopping-cart-data.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: payments
+  RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
+  RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
+  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_VIRTUAL_HOST: "/"
+  OAUTH2_ISSUER_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
+  OAUTH2_JWK_SET_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart/protocol/openid-connect/certs
+  PAYMENT_GATEWAY_DEFAULT: mock
+  STRIPE_ENABLED: "false"
+  PAYPAL_ENABLED: "false"
+  ENCRYPTION_ENABLED: "true"
+  LOG_LEVEL: INFO

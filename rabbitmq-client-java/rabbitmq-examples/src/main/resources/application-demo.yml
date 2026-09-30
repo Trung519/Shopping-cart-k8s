@@ -1,0 +1,34 @@
+# Demo profile - uses static credentials, no Vault required
+spring:
+  cloud:
+    vault:
+      enabled: false
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:30672}
+  vhost: ${RABBITMQ_VHOST:/}
+  username: ${RABBITMQ_USERNAME:demo}
+  password: ${RABBITMQ_PASSWORD:demo}
+
+  pool:
+    size: 5
+    prefetch-count: 10
+
+  vault:
+    enabled: false
+
+  circuit-breaker:
+    enabled: false
+
+  retry:
+    max-attempts: 3
+    initial-interval: 1s
+    max-interval: 10s
+    multiplier: 2.0
+
+logging:
+  level:
+    root: INFO
+    com.shoppingcart.rabbitmq: INFO
+    org.springframework: WARN

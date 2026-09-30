@@ -1,0 +1,26 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:false}
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:30672}
+  vhost: ${RABBITMQ_VHOST:/}
+  username: ${RABBITMQ_USERNAME:demo}
+  password: ${RABBITMQ_PASSWORD:demo}
+
+  vault:
+    enabled: ${VAULT_ENABLED:false}
+
+  circuit-breaker:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.shoppingcart.rabbitmq: INFO

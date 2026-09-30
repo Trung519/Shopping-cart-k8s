@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: payment-service-integration-test
+
+  cloud:
+    vault:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/test
+
+server:
+  port: 0
+
+# Payment Gateway Configuration
+payment:
+  gateway:
+    default: mock
+
+    stripe:
+      enabled: false
+
+    paypal:
+      enabled: false
+
+    mock:
+      enabled: true
+      delay-ms: 0
+      failure-rate: 0.0
+
+  encryption:
+    enabled: true
+    # Test key - 32 bytes base64 encoded
+    key: REPLACE_WITH_LOCAL_SECRET
+
+# Rate Limiting - disabled for tests
+rate-limit:
+  enabled: false
+
+# Logging
+logging:
+  level:
+    root: WARN
+    com.shoppingcart.payment: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG

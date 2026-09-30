@@ -1,0 +1,30 @@
+global:
+  environment: local
+  labels:
+    app.kubernetes.io/part-of: shopping-cart
+    environment: local
+  namespaces:
+    apps: shopping-cart-apps
+    data: shopping-cart-data
+    payment: shopping-cart-payment
+    identity: shopping-cart-identity
+    gateway: shopping-cart-gateway
+    vault: vault
+    externalSecrets: external-secrets
+  hosts:
+    application: shopping-cart.localhost
+    keycloak: keycloak.localhost
+    vault: vault.localhost
+  endpoints:
+    rabbitmqHost: rabbitmq.shopping-cart-data.svc.cluster.local
+    rabbitmqPort: "5672"
+    redisCartHost: redis-cart.shopping-cart-data.svc.cluster.local
+    redisCartPort: "6379"
+    postgresOrdersHost: postgresql-orders.shopping-cart-data.svc.cluster.local
+    postgresProductsHost: postgresql-products.shopping-cart-data.svc.cluster.local
+    postgresPaymentHost: postgresql-payment.shopping-cart-data.svc.cluster.local
+    postgresMarketplaceHost: postgresql-marketplace.shopping-cart-data.svc.cluster.local
+    postgresPort: "5432"
+    keycloakIssuer: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
+    vaultAddress: http://vault.vault.svc.cluster.local:8200
+  imagePullSecrets: []

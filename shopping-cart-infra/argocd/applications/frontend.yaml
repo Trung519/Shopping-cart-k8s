@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: cicd
+spec:
+  project: shopping-cart
+  sources:
+    - repoURL: https://github.com/wilddog64/shopping-cart-frontend.git
+      targetRevision: HEAD
+      path: helmchart
+      helm:
+        valueFiles: [$values/values/local/20-frontend.yaml]
+    - repoURL: https://github.com/wilddog64/config-secret-secure.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    name: ubuntu-k3s
+    namespace: shopping-cart-apps
+  syncPolicy:
+    syncOptions: [CreateNamespace=true]

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ .Values.postgresql.products.name }}-init, namespace: {{ .Values.namespaces.data }}}
+data:
+  01-init.sql: |
+    {{- .Values.postgresql.products.initSql | nindent 4 }}
+

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .Values.keycloak.database.name }}, namespace: {{ .Values.namespaces.identity }}}
+spec:
+  type: ClusterIP
+  ports: [{name: postgresql, port: {{ .Values.postgresql.port }}, targetPort: postgresql}]
+  selector: {app.kubernetes.io/name: postgres-keycloak}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .Values.keycloak.name }}, namespace: {{ .Values.namespaces.identity }}}
+spec:
+  type: ClusterIP
+  ports: [{name: http, port: {{ .Values.keycloak.servicePort }}, targetPort: http}]
+  selector: {app.kubernetes.io/name: keycloak}

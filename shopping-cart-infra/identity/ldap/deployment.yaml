@@ -1,0 +1,116 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ldap-config
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: ldap
+    app.kubernetes.io/component: directory
+data:
+  LDAP_ORGANISATION: "Shopping Cart"
+  LDAP_DOMAIN: "shopping-cart.local"
+  LDAP_BASE_DN: "dc=shopping-cart,dc=local"
+  LDAP_TLS: "false"
+  LDAP_READONLY_USER: "true"
+  LDAP_READONLY_USER_USERNAME: "readonly"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ldap-data-pvc
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: ldap
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldap
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: ldap
+    app.kubernetes.io/component: directory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ldap
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ldap
+        app.kubernetes.io/component: directory
+    spec:
+      containers:
+      - name: openldap
+        image: osixia/openldap:1.5.0
+        ports:
+        - name: ldap
+          containerPort: 389
+        - name: ldaps
+          containerPort: 636
+        envFrom:
+        - configMapRef:
+            name: ldap-config
+        - secretRef:
+            name: ldap-secrets
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+        - name: ldap-data
+          mountPath: /var/lib/ldap
+        - name: ldap-config-vol
+          mountPath: /etc/ldap/slapd.d
+        - name: ldap-bootstrap
+          mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+        livenessProbe:
+          tcpSocket:
+            port: ldap
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: ldap
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: ldap-data
+        persistentVolumeClaim:
+          claimName: ldap-data-pvc
+      - name: ldap-config-vol
+        emptyDir: {}
+      - name: ldap-bootstrap
+        configMap:
+          name: ldap-bootstrap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldap
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: ldap
+    app.kubernetes.io/component: directory
+spec:
+  type: ClusterIP
+  ports:
+  - name: ldap
+    port: 389
+    targetPort: ldap
+  - name: ldaps
+    port: 636
+    targetPort: ldaps
+  selector:
+    app.kubernetes.io/name: ldap

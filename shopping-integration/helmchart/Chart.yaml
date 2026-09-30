@@ -1,0 +1,7 @@
+apiVersion: v2
+name: shopping-integration
+description: Shared data, identity, secret references, and Istio edge networking
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+

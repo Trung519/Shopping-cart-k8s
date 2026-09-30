@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Service
+metadata: {name: {{ include "account.name" . }}, namespace: {{ include "account.namespace" . }}}
+spec:
+  type: {{ .Values.service.type }}
+  ports: [{name: {{ .Values.service.portName }}, port: {{ .Values.service.port }}, targetPort: {{ .Values.service.targetPort }}}]
+  selector: {app.kubernetes.io/name: {{ include "account.name" . }}, app.kubernetes.io/instance: {{ .Release.Name }}}

@@ -1,0 +1,23 @@
+namespaces:
+  apps: shopping-cart-apps
+  data: shopping-cart-data
+  payment: shopping-cart-payment
+  identity: shopping-cart-identity
+  vault: vault
+postgresql:
+  orders:
+    database: orders
+  products:
+    database: products
+  payment:
+    database: payments
+gateway:
+  serviceType: NodePort
+  nodePort: 30080
+  externalPort: 8080
+  hosts:
+    application: shopping-cart.localhost
+    applicationAliases:
+      - localhost
+    keycloak: keycloak.localhost
+    vault: vault.localhost

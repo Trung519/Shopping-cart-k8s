@@ -1,0 +1,31 @@
+spring:
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:true}
+      uri: ${VAULT_ADDR:http://localhost:8200}
+      token: ${VAULT_TOKEN:}
+      authentication: TOKEN
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  vhost: ${RABBITMQ_VHOST:/}
+
+  pool:
+    size: 5
+    prefetch-count: 10
+
+  vault:
+    enabled: ${VAULT_ENABLED:true}
+    role: ${VAULT_ROLE:rabbitmq-role}
+    backend: ${VAULT_RABBITMQ_PATH:rabbitmq}
+
+  circuit-breaker:
+    enabled: true
+    failure-threshold: 5
+    timeout: 30s
+
+logging:
+  level:
+    root: INFO
+    com.shoppingcart.rabbitmq: DEBUG

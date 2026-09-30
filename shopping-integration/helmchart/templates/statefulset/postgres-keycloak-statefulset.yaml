@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.keycloak.database.name }}
+  namespace: {{ .Values.namespaces.identity }}
+  labels: {app.kubernetes.io/name: postgres-keycloak, app.kubernetes.io/component: database, app.kubernetes.io/part-of: shopping-cart}
+spec:
+  serviceName: {{ .Values.keycloak.database.name }}
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: postgres-keycloak}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: postgres-keycloak, app.kubernetes.io/component: database, app.kubernetes.io/part-of: shopping-cart}
+    spec:
+      securityContext: {fsGroup: 999, runAsUser: 999, runAsNonRoot: true}
+      containers:
+        - name: postgres
+          image: "{{ .Values.keycloak.database.image.repository }}:{{ .Values.keycloak.database.image.tag }}"
+          imagePullPolicy: {{ .Values.keycloak.database.image.pullPolicy }}
+          ports: [{name: postgresql, containerPort: {{ .Values.postgresql.port }} }]
+          env:
+            - {name: POSTGRES_DB, value: {{ .Values.keycloak.database.database | quote }}}
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: {{ .Values.keycloak.secretName }}, key: KC_DB_USERNAME}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.keycloak.secretName }}, key: KC_DB_PASSWORD}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          resources:
+            {{- toYaml .Values.keycloak.database.resources | nindent 12 }}
+          livenessProbe: {exec: {command: [pg_isready, -U, {{ .Values.keycloak.database.username }}]}, initialDelaySeconds: 30, periodSeconds: 10}
+          readinessProbe: {exec: {command: [pg_isready, -U, {{ .Values.keycloak.database.username }}]}, initialDelaySeconds: 5, periodSeconds: 5}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+  volumeClaimTemplates:
+    - metadata: {name: data, labels: {app.kubernetes.io/name: postgres-keycloak}}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: {requests: {storage: {{ .Values.keycloak.database.storage }}}}
+

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.redis.name }}
+  namespace: {{ .Values.namespaces.data }}
+  labels: {app.kubernetes.io/name: redis, app.kubernetes.io/instance: cart, app.kubernetes.io/part-of: shopping-cart}
+spec:
+  serviceName: {{ .Values.redis.name }}
+  replicas: {{ .Values.redis.replicas }}
+  selector:
+    matchLabels: {app.kubernetes.io/name: redis, app.kubernetes.io/instance: cart}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: redis, app.kubernetes.io/instance: cart, app.kubernetes.io/part-of: shopping-cart}
+    spec:
+      securityContext: {fsGroup: 999, runAsUser: 999, runAsNonRoot: true}
+      containers:
+        - name: redis
+          image: "{{ .Values.images.redis.repository }}:{{ .Values.images.redis.tag }}"
+          imagePullPolicy: {{ .Values.images.redis.pullPolicy }}
+          command: [redis-server, --requirepass, $(REDIS_PASSWORD), --appendonly, "yes", --maxmemory, {{ .Values.redis.maxMemory | quote }}, --maxmemory-policy, {{ .Values.redis.maxMemoryPolicy }}]
+          ports: [{name: redis, containerPort: {{ .Values.redis.port }}, protocol: TCP}]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.redis.secretName }}, key: password}}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          livenessProbe: {exec: {command: [sh, -c, "redis-cli -a \"$REDIS_PASSWORD\" ping | grep PONG"]}, initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5}
+          readinessProbe: {exec: {command: [sh, -c, "redis-cli -a \"$REDIS_PASSWORD\" ping | grep PONG"]}, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 3}
+          volumeMounts: [{name: data, mountPath: /data}]
+  volumeClaimTemplates:
+    - metadata: {name: data, labels: {app.kubernetes.io/name: redis, app.kubernetes.io/instance: cart}}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: {requests: {storage: {{ .Values.redis.storage }}}}
+

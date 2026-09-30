@@ -1,0 +1,46 @@
+---
+# App of Apps - manages all shopping cart applications
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shopping-cart-apps
+  namespace: cicd
+  labels:
+    app.kubernetes.io/name: shopping-cart-apps
+    app.kubernetes.io/part-of: shopping-cart
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: shopping-cart
+
+  source:
+    # Update this to your infrastructure repository URL
+    repoURL: https://github.com/wilddog64/shopping-cart-infra.git
+    targetRevision: HEAD
+    path: argocd/applications
+    directory:
+      recurse: false
+      exclude: 'shopping-cart-apps.yaml'  # Don't include self
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cicd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+
+  info:
+    - name: Description
+      value: App of Apps - manages all shopping cart microservices
+    - name: Pattern
+      value: GitOps

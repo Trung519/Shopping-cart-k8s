@@ -1,0 +1,16 @@
+{
+  "productPrice": 1000,
+  "productStock": 100000,
+  "sellerProductStock": 1000,
+  "currency": "VND",
+  "cartMinItems": 2,
+  "cartMaxItems": 5,
+  "thinkTimeSeconds": {"min": 1, "max": 10},
+  "shippingAddress": {
+    "street": "1 Performance Street",
+    "city": "Ho Chi Minh City",
+    "state": "District 1",
+    "postalCode": "700000",
+    "country": "VN"
+  }
+}

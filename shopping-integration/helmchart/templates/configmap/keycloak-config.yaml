@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ .Values.keycloak.name }}-config, namespace: {{ .Values.namespaces.identity }}}
+data:
+  {{- range $key, $value := .Values.keycloak.config }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ .Values.keycloak.name }}-realm, namespace: {{ .Values.namespaces.identity }}}
+data:
+  shopping-cart-realm.json: |
+    {{- .Values.keycloak.realmImport | nindent 4 }}
+

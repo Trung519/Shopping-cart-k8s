@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shopping-app.name" . }}
+  namespace: {{ include "shopping-app.namespace" . }}
+  labels:
+    {{- include "shopping-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "shopping-app.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "shopping-app.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/part-of: shopping-cart
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap/frontend-config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "shopping-app.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            {{- omit .Values.probes.liveness "path" | toYaml | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            {{- omit .Values.probes.readiness "path" | toYaml | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.configVolume.enabled }}
+            - name: app-config
+              mountPath: {{ .Values.configVolume.mountPath }}
+              subPath: {{ .Values.configVolume.subPath }}
+            {{- end }}
+            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+      volumes:
+        {{- if .Values.configVolume.enabled }}
+        - name: app-config
+          configMap:
+            name: {{ include "shopping-app.name" . }}-config
+            items:
+              - key: {{ .Values.configVolume.key }}
+                path: {{ .Values.configVolume.subPath }}
+        {{- end }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+

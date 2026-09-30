@@ -1,0 +1,2 @@
+namespace: shopping-cart-apps
+gatewayPrincipal: cluster.local/ns/shopping-cart-gateway/sa/nginx-gateway-istio

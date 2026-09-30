@@ -1,0 +1,17 @@
+{{- if .Values.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ include "shopping-app.name" . }}
+  namespace: {{ include "shopping-app.namespace" . }}
+  labels:
+    {{- include "shopping-app.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.destinationRule.host }}
+  trafficPolicy:
+    connectionPool:
+      {{- toYaml .Values.destinationRule.connectionPool | nindent 6 }}
+    outlierDetection:
+      {{- toYaml .Values.destinationRule.outlierDetection | nindent 6 }}
+{{- end }}
+

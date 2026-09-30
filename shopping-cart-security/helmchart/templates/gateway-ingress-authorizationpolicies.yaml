@@ -1,0 +1,31 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: frontend-gateway-only
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ .Values.gatewayPrincipal | quote }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: commerce-bff-gateway-only
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: commerce-bff
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - {{ .Values.gatewayPrincipal | quote }}

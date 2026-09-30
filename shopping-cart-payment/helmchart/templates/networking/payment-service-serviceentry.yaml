@@ -1,0 +1,15 @@
+{{- if .Values.outbound.enabled }}
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ include "shopping-app.name" . }}-payment-providers
+  namespace: {{ include "shopping-app.namespace" . }}
+spec:
+  hosts:
+    {{- toYaml .Values.outbound.hosts | nindent 4 }}
+  location: MESH_EXTERNAL
+  resolution: DNS
+  ports:
+    {{- toYaml .Values.outbound.ports | nindent 4 }}
+{{- end }}
+

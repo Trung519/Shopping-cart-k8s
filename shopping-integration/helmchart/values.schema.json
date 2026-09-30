@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["namespaces", "images", "postgresql", "rabbitmq", "redis", "keycloak", "externalSecrets", "gateway"],
+  "properties": {
+    "namespaces": {"type": "object", "required": ["apps", "data", "payment", "identity", "gateway", "vault", "externalSecrets"]},
+    "images": {"type": "object", "required": ["postgresqlRepmgr", "pgpool", "postgresql", "rabbitmq", "redis", "keycloak", "busybox"]},
+    "gateway": {
+      "type": "object",
+      "required": ["name", "className", "serviceType", "nodePort", "listenerPort", "hosts", "routes"],
+      "properties": {
+        "serviceType": {"type": "string", "enum": ["ClusterIP", "NodePort"]},
+        "nodePort": {"type": "integer", "minimum": 30000, "maximum": 32767},
+        "listenerPort": {"type": "integer", "minimum": 1, "maximum": 65535}
+      }
+    },
+    "externalSecrets": {"type": "object", "required": ["storeName", "vaultServer", "vaultPath", "authRole"]}
+  }
+}

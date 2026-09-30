@@ -1,0 +1,200 @@
+name: Java CI
+
+on:
+  push:
+    branches: [main, develop, fix/ci-stabilization]
+  pull_request:
+    branches: [main]
+  release:
+    types: [created]
+
+env:
+  JAVA_VERSION: '21'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B clean compile
+
+      - name: Run unit tests
+        run: mvn -B test
+
+      - name: Generate coverage report
+        run: mvn -B jacoco:report
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: rabbitmq-client/target/site/jacoco/jacoco.xml
+          flags: unittests
+          fail_ci_if_error: false
+
+      - name: Package
+        run: mvn -B package -DskipTests
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            rabbitmq-client/target/*.jar
+            rabbitmq-cli/target/*.jar
+
+  publish:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/ci-stabilization')
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Publish to GitHub Packages
+        run: mvn -B deploy -DskipTests -s .github/maven-settings.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3.12-management-alpine
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      vault:
+        image: hashicorp/vault:1.15.6
+        ports:
+          - 8200:8200
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: root
+          VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+        options: >-
+          --cap-add IPC_LOCK
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Wait for services
+        env:
+          RABBITMQ_USER: guest
+          RABBITMQ_PASS: guest
+        run: |
+          echo "Waiting for RabbitMQ AMQP..."
+          timeout 60 bash -c 'until nc -z localhost 5672; do sleep 1; done'
+          echo "Waiting for RabbitMQ management API..."
+          timeout 60 bash -c "until curl -sf http://localhost:15672/api/overview -u ${RABBITMQ_USER}:${RABBITMQ_PASS} > /dev/null 2>&1; do sleep 1; done"
+          echo "Waiting for Vault..."
+          timeout 60 bash -c 'until nc -z localhost 8200; do sleep 1; done'
+
+      - name: Configure Vault
+        env:
+          VAULT_ADDR: http://localhost:8200
+          VAULT_TOKEN: root
+        run: |
+          # Enable RabbitMQ secrets engine (400 = already mounted, anything else fails the step)
+          mount_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "X-Vault-Token: ${VAULT_TOKEN}" \
+            -d '{"type":"rabbitmq"}' \
+            "${VAULT_ADDR}/v1/sys/mounts/rabbitmq")
+          if [ "${mount_status}" = "400" ]; then
+            echo "RabbitMQ secrets engine already mounted; continuing."
+          elif [ "${mount_status}" -lt 200 ] || [ "${mount_status}" -ge 300 ]; then
+            echo "Failed to mount RabbitMQ secrets engine. HTTP status: ${mount_status}" >&2
+            exit 1
+          fi
+
+          # Configure RabbitMQ connection
+          curl -sf -X POST \
+            -H "X-Vault-Token: ${VAULT_TOKEN}" \
+            -d '{"connection_uri":"http://rabbitmq:15672","username":"guest","password":"guest"}' \
+            "${VAULT_ADDR}/v1/rabbitmq/config/connection"
+
+          # Create a role
+          curl -sf -X POST \
+            -H "X-Vault-Token: ${VAULT_TOKEN}" \
+            -d '{"vhosts":"{\"/\":{\"write\":\".*\",\"read\":\".*\",\"configure\":\".*\"}}"}' \
+            "${VAULT_ADDR}/v1/rabbitmq/roles/rabbitmq-role"
+
+      - name: Run integration tests
+        env:
+          VAULT_ADDR: http://localhost:8200
+          VAULT_TOKEN: root
+          RABBITMQ_HOST: localhost
+          RABBITMQ_PORT: 5672
+        run: mvn -B verify -P integration-tests
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build release
+        run: mvn -B package -DskipTests
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            rabbitmq-client/target/*.jar
+            rabbitmq-cli/target/*-publisher.jar
+            rabbitmq-cli/target/*-consumer.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

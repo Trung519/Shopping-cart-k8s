@@ -1,0 +1,107 @@
+name: shopcart-performance
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.13.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=5GB
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/ready >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  grafana:
+    image: grafana/grafana:12.3.9
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3030}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-REPLACE_WITH_LOCAL_SECRET}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  cluster-monitor:
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+    working_dir: /work
+    entrypoint: ["python3", "/work/scripts/cluster-metrics-server.py"]
+    environment:
+      KUBE_CONTEXT: ${KUBE_CONTEXT:-k3d-lab-k8s}
+    volumes:
+      - .:/work:ro
+      - ./.local/kubeconfig:/root/.kube/config:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9101/metrics >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  performance-tools:
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+    profiles: [tools]
+    working_dir: /work
+    entrypoint: ["/bin/bash"]
+    environment:
+      BASE_URL: ${BASE_URL:-http://shopping-cart.localhost:8080}
+      PUBLIC_HOST: ${PUBLIC_HOST:-shopping-cart.localhost}
+      KEYCLOAK_HOST: ${KEYCLOAK_HOST:-keycloak.localhost}
+      KUBE_CONTEXT: ${KUBE_CONTEXT:-k3d-lab-k8s}
+    extra_hosts:
+      - "shopping-cart.localhost:${TARGET_HOST_IP:-host-gateway}"
+      - "keycloak.localhost:${TARGET_HOST_IP:-host-gateway}"
+    volumes:
+      - .:/work
+      - ./.local/kubeconfig:/root/.kube/config:ro
+
+  k6:
+    image: ${K6_IMAGE:-grafana/k6:2.1.0}
+    profiles: [runner]
+    working_dir: /work
+    environment:
+      BASE_URL: ${BASE_URL:-http://shopping-cart.localhost:8080}
+      PUBLIC_HOST: ${PUBLIC_HOST:-shopping-cart.localhost}
+      KEYCLOAK_HOST: ${KEYCLOAK_HOST:-keycloak.localhost}
+      RUN_ID: ${RUN_ID:-manual}
+      PROFILE: ${PROFILE:-load-200}
+      K6_OUT: experimental-prometheus-rw
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM: "false"
+    extra_hosts:
+      - "shopping-cart.localhost:${TARGET_HOST_IP:-host-gateway}"
+      - "keycloak.localhost:${TARGET_HOST_IP:-host-gateway}"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    volumes:
+      - .:/work:ro
+      - ./.local/fixtures:/work/.local/fixtures:ro
+      - ./.local/results:/work/.local/results
+
+volumes:
+  prometheus-data:
+  grafana-data:

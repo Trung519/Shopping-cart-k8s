@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["namespace", "loki", "grafana", "fluent-bit"],
+  "properties": {
+    "namespace": {
+      "type": "object",
+      "required": ["create", "name"],
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string", "const": "shopping-cart-observability"},
+        "labels": {"type": "object"}
+      }
+    },
+    "loki": {
+      "type": "object",
+      "required": ["enabled", "deploymentMode", "loki", "singleBinary"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "deploymentMode": {"type": "string", "enum": ["SingleBinary"]},
+        "loki": {
+          "type": "object",
+          "properties": {
+            "limits_config": {
+              "type": "object",
+              "properties": {
+                "retention_period": {"type": "string", "const": "48h"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "grafana": {"type": "object", "required": ["enabled"]},
+    "fluent-bit": {"type": "object", "required": ["enabled", "kind"]}
+  },
+  "additionalProperties": true
+}

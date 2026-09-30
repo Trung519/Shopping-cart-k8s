@@ -1,0 +1,192 @@
+# Project Rules
+
+## Tech Stack
+
+- **Language**: Python 3.11+
+- **Framework**: FastAPI 0.109+ with Uvicorn
+- **Database**: PostgreSQL 15+ via SQLAlchemy 2.0 (synchronous ORM)
+- **Migrations**: Alembic 1.13+
+- **Messaging**: RabbitMQ via `pika` 1.3.2 + optional Vault via `hvac` 2.1.0 (install with `pip install -e ".[rabbitmq]"`)
+- **Validation**: Pydantic 2.x (models) and pydantic-settings (configuration)
+- **Auth**: OAuth2/OIDC JWT via python-jose[cryptography] + Keycloak JWKS
+- **Metrics**: prometheus-client 0.19.0 (ASGI mounted endpoint)
+- **Logging**: structlog 24.1.0 (JSON-structured)
+- **Build**: pyproject.toml (setuptools), Python package `shopping-cart-product-catalog`
+- **Testing**: pytest 7.4.4, pytest-asyncio 0.23.3, pytest-cov, testcontainers 3.7.1
+- **Code Quality**: black (line-length 100), isort (black profile), mypy (strict), ruff
+- **Container**: Docker multi-stage build
+- **Orchestration**: Kubernetes with Kustomize (k8s/base/); ArgoCD integration
+- **CI**: GitHub Actions (no workflow files visible but Makefile has CI targets)
+
+## Architecture
+
+```
+FastAPI Router (src/product_catalog/routers/)
+    │
+    ↓ dependency injection
+Service / Business Logic
+    │
+    ↓
+SQLAlchemy Session (src/product_catalog/database.py)
+    │
+    ↓
+PostgreSQL
+
+Separately:
+Events (src/product_catalog/events.py) → RabbitMQ
+Auth middleware (src/product_catalog/auth.py) → Keycloak JWKS
+Security middleware (src/product_catalog/security.py) → Headers + Rate limiting
+```
+
+Source package: `src/product_catalog/`
+- `main.py` — FastAPI app, lifespan handler, router mounting, security setup, Prometheus mount
+- `config.py` — `Settings` (pydantic-settings, env-based, `@lru_cache`)
+- `database.py` — SQLAlchemy engine and session management, `init_db()`
+- `models.py` — `Product` SQLAlchemy ORM model
+- `schemas.py` — Pydantic request/response schemas
+- `events.py` — RabbitMQ event classes with common envelope
+- `auth.py` — OAuth2/OIDC JWT validation
+- `messaging.py` — RabbitMQ publisher
+- `security.py` — security middleware setup
+- `routers/products.py` — product CRUD endpoints
+- `routers/health.py` — health check endpoints
+
+## Code Conventions
+
+- Follow PEP 8; use type hints everywhere — `mypy --strict` must pass
+- Use **Pydantic 2.x** for all data validation; use `model_dump()` not `.dict()`
+- Use `pydantic-settings` `BaseSettings` for configuration; use `@lru_cache` on `get_settings()`
+- Use **structlog** for logging; never use `print()` or standard `logging.info()` directly
+- Prefer `async` for route handlers; database operations in this codebase are synchronous SQLAlchemy (not async)
+- Never log credentials, card data, or secrets
+- Line length: **100 characters** (configured in pyproject.toml for black, isort, ruff)
+- Import ordering: isort with `profile = "black"`
+- Type checking: `mypy src/` with `strict = true` and `ignore_missing_imports = true`
+- Linting: ruff with rules E, F, W, I, N, UP, B, C4
+- Test configuration: `asyncio_mode = "auto"` in pyproject.toml
+- UUID primary keys for all entities
+- Soft deletes via `is_active = False` flag (never hard-delete products)
+- Currency stored as 3-letter ISO code (default "USD")
+- Prices stored as `Numeric(10, 2)` in PostgreSQL
+
+## Testing
+
+- All tests in `tests/` directory: `tests/unit/` and `tests/integration/`
+- pytest with asyncio_mode = "auto"
+- Run all tests: `make test` or `pytest tests/ -v`
+- Run unit tests: `make test-unit` or `pytest tests/unit/ -v`
+- Run integration tests: `make test-integration` or `pytest tests/integration/ -v`
+- Run security tests: `make test-security` or `pytest tests/unit/test_security*.py -v`
+- Coverage: `make test-cov` → generates `htmlcov/index.html`
+- Coverage (CI/XML): `make test-cov-xml` → `coverage.xml`
+- Re-run failed tests: `make test-failed` (pytest --lf)
+- Do NOT test against real external services in unit tests; mock database and messaging
+- Integration tests may use testcontainers for real PostgreSQL
+
+## Build & Run
+
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install with all dev dependencies
+pip install -e ".[dev,rabbitmq]"
+
+# Install local RabbitMQ client library (if using local fork)
+pip install -e "../rabbitmq-client-library/python"
+
+# Run development server (auto-reload)
+make run-dev
+# or:
+uvicorn product_catalog.main:app --reload --host 0.0.0.0 --port 8000
+
+# Run production
+make prod-run
+# or:
+ENVIRONMENT=production uvicorn product_catalog.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Format code
+make format          # black src/ tests/ && isort src/ tests/
+
+# Check formatting
+make format-check
+
+# Lint
+make lint            # ruff check src/ tests/
+
+# Fix lint issues
+make lint-fix
+
+# Type check
+make typecheck       # mypy src/
+
+# All quality checks
+make check           # lint + typecheck + test
+
+# Database migrations
+make db-migrate      # alembic upgrade head
+make db-migrate-create  # interactive: create new migration
+make db-downgrade    # alembic downgrade -1
+make db-history
+
+# Deploy to Kubernetes
+make k8s-deploy      # kubectl apply -k k8s/base
+
+# ArgoCD
+make argocd-sync
+make argocd-status
+
+# Export OpenAPI schema
+make openapi
+
+# Security scan
+make security-scan   # bandit -r src/
+```
+
+Key environment variables (with defaults):
+- `HOST=0.0.0.0`, `PORT=8000`
+- `ENVIRONMENT=development`, `DEBUG=false`
+- `DB_HOST=localhost`, `DB_PORT=5432`, `DB_NAME=products`, `DB_USERNAME=postgres`, `DB_PASSWORD=postgres`
+- `RABBITMQ_HOST=localhost`, `RABBITMQ_PORT=5672`, `RABBITMQ_VHOST=/`, `RABBITMQ_USERNAME=guest`, `RABBITMQ_PASSWORD=guest`, `RABBITMQ_USE_TLS=false`
+- `VAULT_ENABLED=false`, `VAULT_ADDR=http://localhost:8200`, `VAULT_ROLE=product-publisher`, `VAULT_RABBITMQ_PATH=rabbitmq`
+- `OAUTH2_ENABLED=false`, `OAUTH2_ISSUER_URI=http://keycloak.identity.svc.cluster.local/realms/shopping-cart`, `OAUTH2_CLIENT_ID=product-catalog`
+- `RATE_LIMIT_PER_MINUTE=100`, `RATE_LIMIT_PER_SECOND=20`, `RATE_LIMIT_BURST=50`
+
+Supports `.env` file in project root (pydantic-settings `env_file=".env"`).
+
+## Key Patterns
+
+### Event Envelope (common platform format)
+```python
+{
+    "id": "uuid",
+    "type": "inventory.updated",
+    "version": "1.0",
+    "timestamp": "2025-01-01T00:00:00Z",
+    "source": "product-catalog",
+    "correlationId": "uuid",
+    "data": { ... }
+}
+```
+Exchange: `events`
+Routing keys: `inventory.updated`, `inventory.low`, `inventory.reserved`
+
+### Configuration Pattern
+Settings via pydantic-settings; database URL computed as property:
+```python
+settings = get_settings()  # cached singleton
+settings.database_url  # computed from DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD
+```
+
+### Application Lifespan
+Database initialized in `@asynccontextmanager` lifespan handler: `init_db()` called on startup.
+
+### Kubernetes
+- Namespace: `shopping-cart-apps`
+- ArgoCD application: `product-catalog`
+- Has HPA (k8s/base/hpa.yaml), namespace, and secret manifests
+- Production: Gunicorn with Uvicorn workers for multi-process (`make prod-gunicorn`)
+
+### Soft Delete
+Products use `is_active` flag. DELETE endpoint sets `is_active = False`. List endpoint filters by `active_only=true` (default).

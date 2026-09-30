@@ -1,0 +1,94 @@
+name: Python CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install lint tools
+        run: pip install ruff mypy
+
+      - name: Run ruff
+        run: ruff check .
+
+      - name: Run mypy
+        run: mypy . --ignore-missing-imports
+
+  build:
+    name: Lint, Test & Build
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Run tests
+        run: pytest --maxfail=1 --disable-warnings -q
+
+  security-scan:
+    name: Security Scan
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev] pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit
+        continue-on-error: true
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          retention-days: 7
+
+  publish:
+    name: Build, Scan & Push
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: wilddog64/shopping-cart-infra/.github/workflows/build-push-deploy.yml@999f8d70277b92d928412ff694852b05044dbb75
+    with:
+      service-name: shopping-cart-product-catalog
+      image-name: ghcr.io/wilddog64/shopping-cart-product-catalog
+    permissions:
+      contents: write
+      packages: write
+    secrets:
+      PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}

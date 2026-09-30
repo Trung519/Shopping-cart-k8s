@@ -1,0 +1,1192 @@
+pipeline {
+    agent {
+        label 'AZURE-UP-IP165'
+    }
+
+    environment {
+        // ==============================
+        // Azure Container Registry
+        // ==============================
+        ACR_LOGIN_SERVER = 'klaaracimbtfe.azurecr.io'
+        ACR_CREDENTIALS_ID = 'klaaracimbtfe-secret-id'
+
+        // ==============================
+        // OpenShift
+        // ==============================
+        OCP_NAMESPACE = 'cimb-tfe-dev'
+        OCP_API_SERVER = 'https://api.t4avdnfn.southeastasia.aroapp.io:6443'
+
+        KUBECONFIG = "${WORKSPACE}/.kubeconfig"
+
+        // ==============================
+        // Helm
+        // ==============================
+        HELM_VERSION = 'v3.15.4'
+
+        // Pinned scanner images for reproducible security gates.
+        GITLEAKS_IMAGE = 'zricethezav/gitleaks:v8.24.3'
+        TRIVY_IMAGE = 'aquasec/trivy:0.61.1'
+        HELM_BIN = "${WORKSPACE}/bin/helm"
+
+        // Fixed infra source. Deliberately not exposed as a build parameter.
+        INFRA_REPO = 'cimb-infra'
+        INFRA_BRANCH = 'release/mvp1-origin'
+        INFRA_CREDENTIALS_ID = 'bitbucket-cimb-infra-token'
+
+        /*
+         * Store Helm cache/config in workspace because the OpenShift CLI
+         * container may run with a non-root user.
+         */
+        HELM_CONFIG_HOME = "${WORKSPACE}/.helm/config"
+        HELM_CACHE_HOME = "${WORKSPACE}/.helm/cache"
+        HELM_DATA_HOME = "${WORKSPACE}/.helm/data"
+    }
+
+    stages {
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (!params.REPOS?.trim()) {
+                        error '[PARAMETER ERROR] REPOS is required'
+                    }
+
+                    if (!params.SOURCE_BRANCH?.trim()) {
+                        error '[PARAMETER ERROR] SOURCE_BRANCH is required'
+                    }
+
+                    def repoConfig = getRepoConfig()
+
+                    def selectedRepos = params.REPOS
+                        .split(',')
+                        .collect { it.trim() }
+                        .findAll { it }
+
+                    if (selectedRepos.isEmpty()) {
+                        error '[PARAMETER ERROR] No repository selected'
+                    }
+
+                    selectedRepos.each { repoName ->
+                        if (!repoConfig[repoName]) {
+                            error "[PARAMETER ERROR] Missing configuration for repository: ${repoName}"
+                        }
+                    }
+
+                    def requestedImageTag = params.IMAGE_TAG?.trim()
+
+                    echo """
+                    ==========================================
+                    SELECTED REPOS : ${selectedRepos.join(', ')}
+                    SOURCE BRANCH : ${params.SOURCE_BRANCH.trim()}
+                    IMAGE TAG     : ${requestedImageTag ?: 'AUTO (short Git commit ID)'}
+                    DEPLOY OCP    : ${params.ENABLE_DEPLOY_OCP}
+                    ==========================================
+                    """
+                }
+            }
+        }
+
+        stage('Checkout Sources') {
+            steps {
+                script {
+                    def repoConfig = getRepoConfig()
+                    selectedRepoNames().each { repoName ->
+                        dir(repoName) {
+                            checkoutRepo(
+                                repoConfig[repoName].credentialsId,
+                                params.SOURCE_BRANCH.trim()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Unit Test & Lint') {
+            steps {
+                script {
+                    selectedRepoNames().each { repoName ->
+                        dir(repoName) {
+                            runQualityGate(repoName)
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                script {
+                    selectedRepoNames().each { repoName ->
+                        dir(repoName) {
+                            scanSecrets(repoName)
+                            scanLibraries(repoName)
+                            scanConfig(repoName)
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build & Push') {
+            steps {
+                script {
+                    def repoConfig = getRepoConfig()
+
+                    def selectedRepos = params.REPOS
+                        .split(',')
+                        .collect { it.trim() }
+                        .findAll { it }
+
+                    selectedRepos.each { repoName ->
+                        def cfg = repoConfig[repoName]
+
+                        dir(repoName) {
+
+                            def finalTag = resolveImageTag(params.IMAGE_TAG)
+
+                            // Save the resolved tag once and reuse it in deployment stages.
+                            env.FINAL_IMAGE_TAG = finalTag
+
+                            echo """
+                            ==========================================
+                            BUILD REPO : ${repoName}
+                            BRANCH     : ${params.SOURCE_BRANCH.trim()}
+                            IMAGE TAG  : ${finalTag}
+                            IMAGE      : ${env.ACR_LOGIN_SERVER}/${cfg.imageName}:${finalTag}
+                            ==========================================
+                            """
+
+                            if (repoName == 'sftp-go-svc') {
+                                echo '[BUILD] sftp-go-svc only applies Helm chart. Skipping build and push.'
+                            } else {
+                                if (repoName == 'moai-api'|| repoName == 'ms-sso-svc') {
+                                    echo '[BUILD] moai-api builds directly from Dockerfile. Skipping build-script.sh.'
+                                } else {
+                                    prepareBuildContext(repoName)
+                                }
+
+                                buildAndPush(
+                                    env.ACR_LOGIN_SERVER,
+                                    env.ACR_CREDENTIALS_ID,
+                                    repoName,
+                                    cfg,
+                                    finalTag
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Checkout Helm Charts') {
+            when {
+                expression {
+                    return params.ENABLE_DEPLOY_OCP == true
+                }
+            }
+
+            steps {
+                dir('cimb-infra') {
+                    checkoutRepo(
+                        env.INFRA_CREDENTIALS_ID,
+                        env.INFRA_BRANCH
+                    )
+                }
+            }
+        }
+
+        /*
+         * Helm creates or updates Deployment, Service, ConfigMap,
+         * Route, Secret references and other resources.
+         *
+         * Do not use --wait or --atomic here because the image will
+         * be changed by oc set image in the next stage.
+         */
+        stage('Deploy Helm Chart') {
+            when {
+                expression {
+                    return params.ENABLE_DEPLOY_OCP == true
+                }
+            }
+
+            agent {
+                docker {
+                    image 'quay.io/openshift/origin-cli:latest'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                script {
+                    def repoConfig = getRepoConfig()
+
+                    installHelm()
+                    loginOCP()
+
+                    def selectedRepos = params.REPOS
+                        .split(',')
+                        .collect { it.trim() }
+                        .findAll { it }
+
+                    selectedRepos.each { repoName ->
+                        def cfg = repoConfig[repoName]
+
+                        if (!cfg.releaseName?.trim() || !cfg.helmchartFolder?.trim()) {
+                            echo """
+                            [HELM] Helm deployment is not configured for ${repoName}.
+                            [HELM] Skipping Helm deployment for this repository.
+                            """
+
+                        } else {
+                            echo """
+                            ==========================================
+                            HELM REPO    : ${repoName}
+                            RELEASE NAME : ${cfg.releaseName}
+                            INFRA BRANCH : ${env.INFRA_BRANCH}
+                            CHART FOLDER : ${cfg.helmchartFolder}
+                            VALUES FILE  : ${cfg.helmchartFolder}/values.yaml
+                            DEPLOYMENT   : ${cfg.deployment}
+                            NAMESPACE    : ${env.OCP_NAMESPACE}
+                            ==========================================
+                            """
+
+                            dir(env.INFRA_REPO) {
+                                deployHelmChartToOCP(
+                                    env.OCP_NAMESPACE,
+                                    cfg
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /*
+         * After Helm deploys the chart, update the Deployment image
+         * to the image created by the Build & Push stage.
+         */
+        stage('Update Deployment Image') {
+            when {
+                expression {
+                    return params.ENABLE_DEPLOY_OCP == true
+                }
+            }
+
+            agent {
+                docker {
+                    image 'quay.io/openshift/origin-cli:latest'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                script {
+                    def repoConfig = getRepoConfig()
+
+                    loginOCP()
+
+                    def selectedRepos = params.REPOS
+                        .split(',')
+                        .collect { it.trim() }
+                        .findAll { it }
+
+                    selectedRepos.each { repoName ->
+                        def cfg = repoConfig[repoName]
+
+                        if (repoName == 'sftp-go-svc') {
+                            echo '[OCP] sftp-go-svc image is managed by Helm. Skipping image update.'
+                        } else if (!cfg.deployment?.trim()) {
+                            echo """
+                            [OCP] No Deployment configured for ${repoName}.
+                            [OCP] Skipping image update.
+                            """
+
+                        } else {
+                            def finalTag = env.FINAL_IMAGE_TAG?.trim()
+
+                            if (!finalTag) {
+                                error '[IMAGE TAG ERROR] FINAL_IMAGE_TAG is empty. Build & Push must run first.'
+                            }
+
+                            echo """
+                            ==========================================
+                            DEPLOY REPO : ${repoName}
+                            DEPLOYMENT  : ${cfg.deployment}
+                            IMAGE TAG   : ${finalTag}
+                            IMAGE       : ${env.ACR_LOGIN_SERVER}/${cfg.imageName}:${finalTag}
+                            NAMESPACE   : ${env.OCP_NAMESPACE}
+                            ==========================================
+                            """
+
+                            deployToOCP(
+                                env.OCP_NAMESPACE,
+                                cfg.deployment,
+                                cfg.containerName ?: '',
+                                cfg.imageName,
+                                env.ACR_LOGIN_SERVER,
+                                finalTag
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deployment Summary') {
+            when {
+                expression {
+                    return params.ENABLE_DEPLOY_OCP == true
+                }
+            }
+
+            agent {
+                docker {
+                    image 'quay.io/openshift/origin-cli:latest'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                script {
+                    def repoConfig = getRepoConfig()
+
+                    loginOCP()
+
+                    def selectedRepos = params.REPOS
+                        .split(',')
+                        .collect { it.trim() }
+                        .findAll { it }
+
+                    selectedRepos.each { repoName ->
+                        def cfg = repoConfig[repoName]
+
+                        if (cfg.deployment?.trim()) {
+                            showDeploymentSummary(
+                                env.OCP_NAMESPACE,
+                                cfg.deployment
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '=========================================='
+            echo 'Pipeline completed successfully'
+            echo '=========================================='
+        }
+
+        failure {
+            echo '=========================================='
+            echo 'Pipeline failed. Please review the logs.'
+            echo '=========================================='
+        }
+
+        always {
+            cleanWs()
+        }
+    }
+}
+
+
+// ============================================================
+// Repository and deployment configuration
+// ============================================================
+
+def getRepoConfig() {
+    return [
+        'moai-api': [
+            credentialsId: 'moai-access-token',
+            imageName: 'moai-api',
+
+            deployment: 'ms-moai-auth-svc',
+
+            releaseName: 'ms-moai-auth-svc',
+
+            helmchartFolder: 'ms-moai-auth-svc'
+        ],
+        
+        'ms-sso-svc': [
+            credentialsId: 'moai-access-token',
+            imageName: 'moai-api',
+
+            deployment: 'ms-sso-svc',
+
+            releaseName: 'ms-sso-svc',
+
+            helmchartFolder: 'ms-sso-svc'
+        ],
+
+        'ms-pricing-svc': [
+            credentialsId: 'ms-pricing-svc',
+            imageName: 'pricing-api',
+
+            deployment: 'ms-pricing-svc',
+
+            releaseName: 'ms-pricing-svc',
+            helmchartFolder: 'ms-pricing-svc'
+        ],
+
+        'ms-rdm-api-svc': [
+            credentialsId: 'ms-rdm-api-svc',
+            imageName: 'rdm-api',
+
+            deployment: 'ms-rdm-api-svc',
+
+            releaseName: 'ms-rdm-api-svc',
+            helmchartFolder: 'ms-rdm-api-svc'
+        ],
+
+        'ms-rfq-svc': [
+            credentialsId: 'ms-rfq-svc',
+            imageName: 'rfq-api',
+
+            deployment: 'ms-rfq-svc',
+
+            releaseName: 'ms-rfq-svc',
+            helmchartFolder: 'ms-rfq-svc'
+        ],
+
+        'ms-trade-booking-svc': [
+            credentialsId: 'ms-trade-booking-svc',
+            imageName: 'trade-api',
+
+            deployment: 'ms-trade-booking-svc',
+
+            releaseName: 'cimb-trade',
+            helmchartFolder: 'ms-trade-booking-svc'
+        ],
+
+        'ms-unified-ui-svc': [
+            credentialsId: 'ms-unified-ui-svc',
+            imageName: 'unified-ui',
+
+            deployment: 'ms-unified-ui-svc',
+
+            releaseName: 'ms-unified-ui-svc',
+            helmchartFolder: 'ms-unified-ui-svc'
+        ],
+        
+        'ms-ui-sso-svc': [
+            credentialsId: 'ms-unified-ui-svc',
+            imageName: 'unified-ui',
+
+            deployment: 'cimb-unified-ui-sso',
+
+            releaseName: 'ms-ui-sso-svc',
+            helmchartFolder: 'ms-ui-sso-svc'
+        ],
+
+        'ms-aegis-svc': [
+            credentialsId: 'ms-aegis-svc',
+            imageName: 'ms-aegis-svc',
+
+            deployment: 'ms-aegis-svc',
+
+            releaseName: 'ms-aegis-svc',
+            helmchartFolder: 'ms-aegis-svc'
+        ],
+
+        'report-api': [
+            credentialsId: 'report-api',
+            imageName: 'report-api',
+
+            deployment: 'ms-reporting-svc',
+
+            releaseName: 'ms-reporting-svc',
+            helmchartFolder: 'ms-reporting-svc'
+        ],
+        
+        'ms-mq-adapter-svc': [
+            credentialsId: 'ms-mq-adapter-svc',
+            imageName: 'ms-mq-adapter-svc',
+
+            deployment: 'ms-mq-adapter-svc',
+
+            releaseName: 'ms-mq-adapter-svc',
+            helmchartFolder: 'ms-mq-adapter-svc'
+        ],
+
+        'sftp-go-svc': [
+            credentialsId: 'sftp-go-svc',
+            imageName: 'sftpgo',
+
+            deployment: 'sftp-go-svc',
+
+            releaseName: 'sftpgo',
+            helmchartFolder: 'sftp-go-svc'
+        ],
+
+        /*
+         * Build and push only.
+         * No Helm or OpenShift Deployment is configured.
+         */
+        'interface-api': [
+            credentialsId: 'bitbucket-interface-api-token',
+            imageName: 'interface-api',
+
+            deployment: '',
+            containerName: '',
+
+            releaseName: '',
+            helmchartFolder: ''
+        ]
+    ]
+}
+
+
+// ============================================================
+// Git functions
+// ============================================================
+
+def verifyRemoteBranchExists(
+    String repoUrl,
+    String branchName
+) {
+    def result = sh(
+        script: """#!/bin/sh
+            set -e
+
+            git ls-remote \
+                --heads \
+                "${repoUrl}" \
+                "refs/heads/${branchName}" || true
+        """,
+        returnStdout: true
+    ).trim()
+
+    if (!result) {
+        error """
+        [PARAMETER ERROR]
+        Branch '${branchName}' does not exist in repository:
+        ${repoUrl}
+        """
+    }
+}
+
+
+def checkoutRepo(
+    String credentialsId,
+    String branchName
+) {
+    withCredentials([
+        usernamePassword(
+            credentialsId: credentialsId,
+            usernameVariable: 'BB_USER',
+            passwordVariable: 'BB_TOKEN'
+        )
+    ]) {
+        def repoName = pwd()
+            .tokenize('/\\')
+            .last()
+			
+		def sourceRepoName = repoName == 'ms-ui-sso-svc' ? 'ms-unified-ui-svc' 
+		    : repoName == 'ms-sso-svc' ? 'moai-api'
+			: repoName
+
+        def repoUrl =
+            "https://${BB_USER}:${BB_TOKEN}@bitbucket.org/klaara-ai/${sourceRepoName}.git"
+
+        verifyRemoteBranchExists(
+            repoUrl,
+            branchName
+        )
+
+        sh """
+            set -e
+
+            echo "[GIT] Repository : ${repoName}"
+            echo "[GIT] Branch     : ${branchName}"
+
+            if [ ! -d .git ]; then
+                git init
+                git remote add origin "${repoUrl}"
+            else
+                git remote set-url origin "${repoUrl}"
+            fi
+
+            git fetch \
+                --depth=1 \
+                --prune \
+                origin \
+                "${branchName}"
+
+            git checkout \
+                -B "${branchName}" \
+                "origin/${branchName}"
+
+            git reset \
+                --hard \
+                "origin/${branchName}"
+
+            git clean -fdx
+
+            echo "[GIT] Current commit:"
+            git log -1 --oneline
+        """
+    }
+}
+
+
+// ============================================================
+// Image tag resolution
+// ============================================================
+
+def resolveImageTag(String requestedTag) {
+    def explicitTag = requestedTag?.trim()
+
+    if (explicitTag) {
+        echo "[IMAGE TAG] Using provided IMAGE_TAG: ${explicitTag}"
+        return explicitTag
+    }
+
+    def shortCommitId = sh(
+        script: 'git rev-parse --short=7 HEAD',
+        returnStdout: true
+    ).trim()
+
+    if (!shortCommitId) {
+        error '[IMAGE TAG ERROR] Unable to determine short Git commit ID'
+    }
+
+    echo "[IMAGE TAG] IMAGE_TAG is empty. Using commit ID: ${shortCommitId}"
+    return shortCommitId
+}
+
+
+// ============================================================
+// Repository selection and CI quality/security gates
+// ============================================================
+
+def selectedRepoNames() {
+    return params.REPOS
+        .split(',')
+        .collect { it.trim() }
+        .findAll { it }
+        .unique()
+}
+
+
+def runQualityGate(String repoName) {
+    def npmCommands = [
+        'ms-pricing-svc':       [test: 'npm run test:unit', lint: 'npm run lint'],
+        'ms-rdm-api-svc':       [test: 'npm test -- --runInBand', lint: 'npx eslint "{src,apps,libs,test}/**/*.ts"'],
+        // Jest is configured in ms-rfq-svc, but the current repo has no *.test/*.spec source files.
+        'ms-rfq-svc':           [test: '', lint: 'npm run lint'],
+        'ms-trade-booking-svc': [test: 'npm test -- --runInBand', lint: 'npx eslint "{src,apps,libs,test}/**/*.ts"'],
+        'ms-unified-ui-svc':    [test: 'npm run test:ci', lint: 'npm run lint'],
+        'ms-aegis-svc':         [test: 'npm test -- --runInBand', lint: 'npx eslint "{src,apps,libs,test}/**/*.ts"'],
+        'report-api':           [test: 'npm test -- --runInBand', lint: 'npm run lint'],
+        'ms-mq-adapter-svc':    [test: 'npm test -- --runInBand', lint: 'npx eslint "{src,apps,libs,test}/**/*.ts"']
+    ]
+
+    if (repoName in ['moai-api', 'ms-sso-svc']) {
+        echo "[QUALITY] ${repoName}: Rust unit tests + rustfmt lint"
+        sh '''
+            set -e
+            docker run --rm \
+                --user "$(id -u):$(id -g)" \
+                -v "$PWD:/workspace" \
+                -w /workspace \
+                -e HOME=/tmp \
+                rust:1.85-bookworm \
+                sh -lc 'cargo fmt --all -- --check && cargo clippy --lib --locked -- -D warnings && cargo test --lib --locked'
+        '''
+        return
+    }
+
+    def commands = npmCommands[repoName]
+    if (!commands) {
+        echo "[QUALITY] ${repoName}: no application unit-test/lint configuration; skipping."
+        return
+    }
+
+    echo "[QUALITY] ${repoName}: installing locked dependencies, linting and running unit tests"
+    sh """
+        set -e
+
+        docker run --rm \\
+            --user \"\$(id -u):\$(id -g)\" \\
+            -v \"\$PWD:/workspace\" \\
+            -w /workspace \\
+            -e CI=true \\
+            -e HOME=/tmp \\
+            node:20-bookworm \\
+            sh -lc \"set -e;
+                npm ci --no-audit;
+
+                echo '';
+                echo '==============================================';
+                echo ' NPM AUDIT - CRITICAL / HIGH / MODERATE';
+                echo '==============================================';
+
+                npm audit --json > /tmp/audit.json || true;
+
+                node -e 'const a=require(\\\"/tmp/audit.json\\\"); const order={critical:0,high:1,moderate:2}; Object.entries(a.vulnerabilities||{}).filter(([n,v])=>order[v.severity]!==undefined).sort((a,b)=>order[a[1].severity]-order[b[1].severity]).forEach(([n,v])=>console.log(v.severity.toUpperCase()+\\\" | \\\"+n+\\\" | \\\"+(v.range||\\\"\\\")));';
+
+                echo '==============================================';
+
+                ${commands.lint}${commands.test ? " && ${commands.test}" : ""}
+            \"
+    """
+}
+
+
+def scanSecrets(String repoName) {
+    echo "[SECURITY] ${repoName}: scanning tracked working-tree content for hard-coded secrets"
+    sh """
+        set -e
+        docker run --rm \\
+            -v \"\$PWD:/repo\" \\
+            \"${env.GITLEAKS_IMAGE}\" \\
+            dir /repo \\
+            --verbose \\
+            --no-banner \\
+            --exit-code 1 || true
+    """
+}
+
+
+def scanLibraries(String repoName) {
+    if (!hasDependencyManifest()) {
+        echo "[SECURITY] ${repoName}: no supported dependency manifest/lockfile; library scan skipped."
+        return
+    }
+
+    echo "[SECURITY] ${repoName}: scanning locked third-party libraries for fixable HIGH/CRITICAL CVEs"
+    sh """
+        set -e
+        docker run --rm \\
+            -v \"\$PWD:/repo\" \\
+            \"${env.TRIVY_IMAGE}\" \\
+            fs /repo \\
+            --scanners vuln \\
+            --severity MEDIUM,HIGH,CRITICAL \\
+            --ignore-unfixed \\
+            --exit-code 1 \\
+            --no-progress
+    """
+}
+
+def scanConfig(String repoName) {
+    echo "[SECURITY] ${repoName}: scanning Docker/IaC configuration"
+
+    sh """
+        set -e
+
+        docker run --rm \\
+            -v "\$PWD:/repo" \\
+            "${env.TRIVY_IMAGE}" \\
+            config /repo \\
+            --severity MEDIUM,HIGH,CRITICAL \\
+            --exit-code 1 \\
+            --no-progress || true
+    """
+}
+
+
+def hasDependencyManifest() {
+    return [
+        'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml',
+        'Cargo.lock', 'go.mod', 'pom.xml', 'build.gradle', 'build.gradle.kts',
+        'requirements.txt', 'Pipfile.lock', 'poetry.lock', 'composer.lock',
+        'Gemfile.lock'
+    ].any { fileExists(it) }
+}
+
+// ============================================================
+// Application build
+// ============================================================
+
+def prepareBuildContext(
+    String repoName
+) {
+    sh """
+        set -e
+
+        if [ ! -f build-script.sh ]; then
+            echo "[BUILD] build-script.sh not found for ${repoName}. Skipping application build."
+            exit 0
+        fi
+
+        echo "[BUILD] Running build-script.sh for ${repoName}"
+
+        sed -i 's/\\r//' build-script.sh
+        chmod +x build-script.sh
+        ./build-script.sh
+
+        echo "[BUILD] Build context summary"
+        test -d dist && echo "[BUILD] dist found" || echo "[BUILD] dist not found"
+        test -d node_modules && echo "[BUILD] node_modules found" || echo "[BUILD] node_modules not found"
+    """
+}
+
+
+// ============================================================
+// Docker build and push
+// ============================================================
+
+def buildAndPush(
+    String server,
+    String credentialsId,
+    String repoName,
+    Map cfg,
+    String finalTag
+) {
+    def fullImage = "${server}/${cfg.imageName}:${finalTag}"
+    def dockerfileName = (repoName == 'moai-api' || repoName == 'ms-sso-svc') ? 'Dockerfile' : 'Dockerfile.cimb'
+
+    withCredentials([
+        usernamePassword(
+            credentialsId: credentialsId,
+            usernameVariable: 'ACR_USER',
+            passwordVariable: 'ACR_PASS'
+        )
+    ]) {
+        sh """
+            set -e
+
+            echo "[DOCKER] Logging in to ${server}"
+
+            echo "\${ACR_PASS}" |
+                docker login \
+                    "${server}" \
+                    -u "\${ACR_USER}" \
+                    --password-stdin
+
+            echo "[DOCKER] Building ${fullImage}"
+
+            if [ ! -f "${dockerfileName}" ]; then
+                echo "[DOCKER ERROR] ${dockerfileName} not found"
+                exit 1
+            fi
+        """
+        
+        if (dockerfileName == 'Dockerfile.cimb') {
+            sh """
+                set -e
+
+                echo "[DOCKER] Replacing private base image with Docker Hub public image"
+
+                sed -i -E \
+                    's#^FROM[[:space:]]+quay-registry-quay-quay-enterprise.apps.ocp-dsu.cimbmy.cimbdomain.com/tfe-org/library/#FROM #' \
+                    "${dockerfileName}"
+            """
+        } else {
+            echo "[DOCKER] Skipping base image replacement for ${repoName}"
+        }
+
+        sh """
+            set -e
+
+            echo "[DOCKER] ${dockerfileName} base image:"
+            grep -n '^FROM' "${dockerfileName}"
+
+            docker build \
+                --no-cache \
+                -t "${fullImage}" \
+                -f "${dockerfileName}" \
+                .
+
+            echo "[DOCKER] Pushing ${fullImage}"
+
+            docker push "${fullImage}"
+
+            echo "[DOCKER] Removing local image"
+
+            docker rmi "${fullImage}" || true
+        """
+    }
+}
+
+
+// ============================================================
+// OpenShift login
+// ============================================================
+
+def loginOCP() {
+    sh '''
+        set -e
+
+        mkdir -p "$(dirname "${KUBECONFIG}")"
+
+        echo "[OCP] Logging in to OpenShift"
+
+        oc login \
+            --server="${OCP_API_SERVER}" \
+            -u CIMB-Dev \
+            -p 'upskillsvn' \
+            --insecure-skip-tls-verify=true
+
+        echo "[OCP] Logged in as:"
+        oc whoami
+
+        echo "[OCP] Selecting project ${OCP_NAMESPACE}"
+        oc project "${OCP_NAMESPACE}"
+    '''
+}
+
+
+// ============================================================
+// Helm installation
+// ============================================================
+
+def installHelm() {
+    sh '''
+        set -e
+
+        echo "[HELM] Installing Helm ${HELM_VERSION}"
+
+        mkdir -p "${WORKSPACE}/bin"
+        mkdir -p "${WORKSPACE}/.helm-install"
+        mkdir -p "${HELM_CONFIG_HOME}"
+        mkdir -p "${HELM_CACHE_HOME}"
+        mkdir -p "${HELM_DATA_HOME}"
+
+        rm -rf "${WORKSPACE}/.helm-install"/*
+        rm -f "${HELM_BIN}"
+
+        curl -fsSL \
+            "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            -o "${WORKSPACE}/.helm-install/helm.tar.gz"
+
+        tar -zxf \
+            "${WORKSPACE}/.helm-install/helm.tar.gz" \
+            -C "${WORKSPACE}/.helm-install"
+
+        cp \
+            "${WORKSPACE}/.helm-install/linux-amd64/helm" \
+            "${HELM_BIN}"
+
+        chmod +x "${HELM_BIN}"
+
+        echo "[HELM] Installed version:"
+        "${HELM_BIN}" version
+    '''
+}
+
+
+// ============================================================
+// Helm deployment
+// ============================================================
+
+def deployHelmChartToOCP(
+    String namespace,
+    Map cfg
+) {
+    def chartPath = cfg.helmchartFolder.trim()
+    def releaseName = cfg.releaseName.trim()
+    def valuesFile = "${chartPath}/values.yaml"
+
+    sh """
+        set -e
+
+        echo "[HELM] Checking chart directory"
+
+        if [ ! -d "${chartPath}" ]; then
+            echo "[HELM ERROR] Chart directory not found: ${chartPath}"
+            exit 1
+        fi
+
+        if [ ! -f "${chartPath}/Chart.yaml" ]; then
+            echo "[HELM ERROR] Chart.yaml not found:"
+            echo "${chartPath}/Chart.yaml"
+            exit 1
+        fi
+    """
+
+    if (valuesFile) {
+        sh """
+            set -e
+
+            if [ ! -f "${valuesFile}" ]; then
+                echo "[HELM ERROR] Values file not found: ${valuesFile}"
+                exit 1
+            fi
+
+            echo "[HELM] Linting chart with values file"
+
+            "${env.HELM_BIN}" lint \
+                "${chartPath}" \
+                -f "${valuesFile}"
+
+            echo "[HELM] Running upgrade --install"
+
+            "${env.HELM_BIN}" upgrade \
+                --install \
+                "${releaseName}" \
+                "${chartPath}" \
+                --namespace "${namespace}" \
+                -f "${valuesFile}" \
+                --debug
+        """
+
+    } else {
+        sh """
+            set -e
+
+            echo "[HELM] Linting chart with default values"
+
+            "${env.HELM_BIN}" lint \
+                "${chartPath}"
+
+            echo "[HELM] Running upgrade --install"
+
+            "${env.HELM_BIN}" upgrade \
+                --install \
+                "${releaseName}" \
+                "${chartPath}" \
+                --namespace "${namespace}" \
+                --debug
+        """
+    }
+
+    sh """
+        set -e
+
+        echo "[HELM] Release status"
+
+        "${env.HELM_BIN}" status \
+            "${releaseName}" \
+            --namespace "${namespace}"
+
+        echo "[HELM] Verifying Deployment ${cfg.deployment}"
+
+        oc -n "${namespace}" \
+            get deployment "${cfg.deployment}"
+    """
+}
+
+
+// ============================================================
+// OpenShift image update
+// ============================================================
+
+def deployToOCP(
+    String namespace,
+    String deploymentName,
+    String configuredContainerName,
+    String imageName,
+    String registry,
+    String finalTag
+) {
+    def fullImage = "${registry}/${imageName}:${finalTag}"
+
+    sh """
+        set -e
+
+        echo "[OCP] Checking Deployment ${deploymentName}"
+
+        oc -n "${namespace}" \
+            get deployment "${deploymentName}"
+    """
+
+    def containerName = configuredContainerName?.trim()
+
+    /*
+     * When containerName is empty, use the first container
+     * from the Deployment.
+     */
+    if (!containerName) {
+        containerName = sh(
+            script: """
+                oc -n "${namespace}" \
+                    get deployment "${deploymentName}" \
+                    -o jsonpath='{.spec.template.spec.containers[0].name}'
+            """,
+            returnStdout: true
+        ).trim()
+    }
+
+    if (!containerName) {
+        error """
+        [OCP ERROR]
+        Unable to determine the container name for Deployment:
+        ${deploymentName}
+        """
+    }
+
+    echo """
+    ==========================================
+    OCP IMAGE UPDATE
+    ------------------------------------------
+    Deployment : ${deploymentName}
+    Container  : ${containerName}
+    Image      : ${fullImage}
+    Namespace  : ${namespace}
+    ==========================================
+    """
+
+    sh """
+        set -e
+
+        echo "[OCP] Updating Deployment image"
+
+        oc -n "${namespace}" \
+            set image \
+            deployment/"${deploymentName}" \
+            "${containerName}"="${fullImage}"
+
+        echo "[OCP] Restarting Deployment"
+
+        oc -n "${namespace}" \
+            rollout restart \
+            deployment/"${deploymentName}"
+
+        echo "[OCP] Image update completed"
+    """
+}
+
+
+// ============================================================
+// Deployment summary
+// ============================================================
+
+def showDeploymentSummary(
+    String namespace,
+    String deploymentName
+) {
+    echo """
+    ==========================================
+    DEPLOYMENT SUMMARY: ${deploymentName}
+    ==========================================
+    """
+
+    sh """
+        set -e
+
+        echo "[OCP] Deployment images"
+
+        oc -n "${namespace}" \
+            get deployment "${deploymentName}" \
+            -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{" => "}{.image}{"\\n"}{end}'
+
+        echo ""
+        echo "[OCP] Deployment status"
+
+        oc -n "${namespace}" \
+            get deployment "${deploymentName}" \
+            -o wide
+
+        echo ""
+        echo "[OCP] Related pods"
+
+        SELECTOR=\$(oc -n "${namespace}" \
+            get deployment "${deploymentName}" \
+            -o jsonpath='{range \$key,\$value := .spec.selector.matchLabels}{\$key}={\$value},{end}' |
+            sed 's/,\$//')
+
+        if [ -n "\${SELECTOR}" ]; then
+            oc -n "${namespace}" \
+                get pods \
+                -l "\${SELECTOR}" \
+                -o wide
+        else
+            echo "[OCP] Deployment has no selector labels"
+        fi
+    """
+}

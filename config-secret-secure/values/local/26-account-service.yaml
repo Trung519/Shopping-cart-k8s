@@ -1,0 +1,7 @@
+namespaceOverride: shopping-cart-apps
+replicaCount: 1
+image: {repository: account-service, tag: v0.1.2, pullPolicy: IfNotPresent}
+config:
+  KEYCLOAK_URL: http://keycloak.shopping-cart-identity.svc.cluster.local
+  KEYCLOAK_REALM: shopping-cart
+  KEYCLOAK_CLIENT_ID: account-service

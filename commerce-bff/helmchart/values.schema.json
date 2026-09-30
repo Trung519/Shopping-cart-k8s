@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["serviceName", "namespaceOverride", "image", "service", "containerPort", "config", "externalSecret"],
+  "properties": {
+    "serviceName": {"type": "string", "minLength": 1},
+    "namespaceOverride": {"type": "string", "minLength": 1},
+    "replicaCount": {"type": "integer", "minimum": 1},
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "containerPort": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "service": {"type": "object", "required": ["type", "port", "targetPort", "portName"]},
+    "config": {
+      "type": "object",
+      "required": ["PUBLIC_URL", "FRONTEND_URL", "OIDC_ISSUER_INTERNAL", "OIDC_AUTHORIZE_URL", "OIDC_END_SESSION_URL", "OIDC_CLIENT_ID", "OIDC_REDIRECT_URL", "PRODUCT_CATALOG_URL", "BASKET_URL", "ORDER_URL", "PAYMENT_URL", "ACCOUNT_URL", "SELLER_URL"]
+    },
+    "externalSecret": {"type": "object", "required": ["enabled", "targetName", "data"]}
+  }
+}

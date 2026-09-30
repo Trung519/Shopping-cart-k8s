@@ -1,0 +1,17 @@
+Shopping Observability is configured for lab-k8s.
+
+Retention:
+  Loki keeps logs for 48h.
+
+Check pods:
+  kubectl --context k3d-lab-k8s -n {{ .Values.namespace.name }} get pods,pvc,svc -o wide
+
+If the namespace does not exist yet:
+  kubectl --context k3d-lab-k8s create namespace {{ .Values.namespace.name }}
+
+Open Grafana:
+  kubectl --context k3d-lab-k8s -n {{ .Values.namespace.name }} port-forward svc/grafana 3000:80
+
+Grafana:
+  http://localhost:3000
+  username: {{ .Values.grafana.adminUser }}

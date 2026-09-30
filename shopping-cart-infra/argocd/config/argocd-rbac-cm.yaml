@@ -1,0 +1,82 @@
+---
+# ArgoCD RBAC ConfigMap - Maps Keycloak groups to ArgoCD roles
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Default policy for authenticated users (read-only)
+  policy.default: role:readonly
+
+  # Scopes to request from OIDC
+  scopes: '[groups, email]'
+
+  # RBAC Policy - Maps Keycloak groups to ArgoCD permissions
+  policy.csv: |
+    # ============================================
+    # Group-based policies (from Keycloak/LDAP)
+    # ============================================
+
+    # Platform Admins - Full access to everything
+    g, platform-admins, role:admin
+
+    # ArgoCD Admins - Full access to ArgoCD
+    g, argocd-admins, role:admin
+
+    # ArgoCD Developers - Can view and sync applications
+    p, role:argocd-developer, applications, get, */*, allow
+    p, role:argocd-developer, applications, sync, */*, allow
+    p, role:argocd-developer, applications, action/*, */*, allow
+    p, role:argocd-developer, logs, get, */*, allow
+    p, role:argocd-developer, exec, create, */*, allow
+    p, role:argocd-developer, repositories, get, *, allow
+    p, role:argocd-developer, clusters, get, *, allow
+    p, role:argocd-developer, projects, get, *, allow
+    g, argocd-developers, role:argocd-developer
+
+    # ArgoCD Viewers - Read-only access
+    p, role:argocd-viewer, applications, get, */*, allow
+    p, role:argocd-viewer, logs, get, */*, allow
+    p, role:argocd-viewer, repositories, get, *, allow
+    p, role:argocd-viewer, clusters, get, *, allow
+    p, role:argocd-viewer, projects, get, *, allow
+    g, argocd-viewers, role:argocd-viewer
+
+    # Platform Developers - Access to shopping-cart project only
+    p, role:platform-developer, applications, get, shopping-cart/*, allow
+    p, role:platform-developer, applications, sync, shopping-cart/*, allow
+    p, role:platform-developer, applications, action/*, shopping-cart/*, allow
+    p, role:platform-developer, logs, get, shopping-cart/*, allow
+    p, role:platform-developer, exec, create, shopping-cart/*, allow
+    p, role:platform-developer, repositories, get, *, allow
+    p, role:platform-developer, clusters, get, *, allow
+    p, role:platform-developer, projects, get, shopping-cart, allow
+    g, platform-developers, role:platform-developer
+
+    # Platform Operators - Read-only access to shopping-cart project
+    p, role:platform-operator, applications, get, shopping-cart/*, allow
+    p, role:platform-operator, logs, get, shopping-cart/*, allow
+    p, role:platform-operator, repositories, get, *, allow
+    p, role:platform-operator, clusters, get, *, allow
+    p, role:platform-operator, projects, get, shopping-cart, allow
+    g, platform-operators, role:platform-operator
+
+    # ============================================
+    # Application-specific policies
+    # ============================================
+
+    # Order Service Admins - Full access to order-service app
+    p, role:order-admin, applications, *, shopping-cart/order-service, allow
+    p, role:order-admin, logs, get, shopping-cart/order-service, allow
+    p, role:order-admin, exec, create, shopping-cart/order-service, allow
+    g, order-admins, role:order-admin
+
+    # Product Catalog Admins - Full access to product-catalog app
+    p, role:catalog-admin, applications, *, shopping-cart/product-catalog, allow
+    p, role:catalog-admin, logs, get, shopping-cart/product-catalog, allow
+    p, role:catalog-admin, exec, create, shopping-cart/product-catalog, allow
+    g, catalog-admins, role:catalog-admin

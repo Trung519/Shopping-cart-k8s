@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "account.name" . }}
+  namespace: {{ include "account.namespace" . }}
+  labels:
+    {{- include "account.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {app.kubernetes.io/name: {{ include "account.name" . }}, app.kubernetes.io/instance: {{ .Release.Name }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: {{ include "account.name" . }}, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/part-of: shopping-cart}
+      annotations: {checksum/config: {{ include (print $.Template.BasePath "/configmap/account-service-config.yaml") . | sha256sum }}}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "account.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: [{name: http, containerPort: {{ .Values.containerPort }}}]
+          envFrom: [{configMapRef: {name: {{ include "account.name" . }}-config}}, {secretRef: {name: {{ .Values.externalSecret.targetName }}}}]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          startupProbe:
+            httpGet: {path: {{ .Values.probes.startup.path }}, port: http}
+            {{- omit .Values.probes.startup "path" | toYaml | nindent 12 }}
+          livenessProbe:
+            httpGet: {path: {{ .Values.probes.liveness.path }}, port: http}
+            {{- omit .Values.probes.liveness "path" | toYaml | nindent 12 }}
+          readinessProbe:
+            httpGet: {path: {{ .Values.probes.readiness.path }}, port: http}
+            {{- omit .Values.probes.readiness "path" | toYaml | nindent 12 }}

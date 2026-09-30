@@ -1,0 +1,224 @@
+# Basket Service
+
+A Go 1.21 microservice that manages shopping-cart sessions. It exposes REST APIs for adding/updating/removing items, stores carts in Redis, publishes checkout events to RabbitMQ, and supports both OAuth2/OIDC and local username/password login.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Go 1.21+
+- Redis 7+ (local docker: `docker run -d -p 6379:6379 redis:7-alpine`)
+- RabbitMQ 3.12+ (optional for event publishing)
+- Keycloak (optional for OAuth2 enforcement)
+
+### Install & Run
+```bash
+# Install dependencies
+go mod download
+
+# Run the service locally
+go run ./cmd/server
+
+# Build binary / Docker image
+make build
+make docker-build
+```
+
+### Tests
+```bash
+# Unit tests
+make test-unit
+
+# Integration tests (requires Redis on localhost:6379)
+make test-integration
+
+# CI variant with external Redis
+REDIS_ADDR=redis.example.com:6379 \
+REDIS_PASSWORD=... make test-integration-ci
+
+# Coverage report
+make coverage
+```
+
+---
+
+## Usage
+
+### Features
+- Shopping cart CRUD operations (add/update/remove/clear)
+- Checkout orchestration that publishes RabbitMQ events
+- Redis-backed state with TTL-based expiration
+- OAuth2/OIDC enforcement with Keycloak JWT validation + dev fallback header
+- Prometheus `/metrics` endpoint and health probes
+
+### Technology Stack
+| Category | Technology |
+|----------|------------|
+| Language | Go 1.21 |
+| Framework | Gin |
+| Storage | Redis |
+| Messaging | RabbitMQ |
+| Auth | Keycloak OAuth2/OIDC |
+| CI | GitHub Actions + golangci-lint + govulncheck |
+
+### Environment Variables
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PORT` | 8083 | HTTP server port |
+| `REDIS_HOST` | localhost | Redis hostname |
+| `REDIS_PORT` | 6379 | Redis port |
+| `REDIS_PASSWORD` | – | Redis password |
+| `REDIS_DB` | 0 | Redis database |
+| `CART_TTL` | 168h | Cart expiration window |
+| `OAUTH2_ENABLED` | false | Toggle OAuth2 enforcement |
+| `OAUTH2_ISSUER_URI` | – | Keycloak issuer URL |
+| `LOCAL_AUTH_ENABLED` | true | Enable local login endpoint |
+| `LOCAL_AUTH_JWT_SECRET` | change-me-in-prod | Signing secret for local JWT tokens |
+| `LOCAL_AUTH_TOKEN_TTL` | 24h | Local JWT validity window |
+| `RABBITMQ_HOST` | localhost | RabbitMQ host |
+| `RABBITMQ_PORT` | 5672 | RabbitMQ port |
+| `LOG_LEVEL` | info | zap log level |
+| `REDIS_ADDR` | – | **Test-only** — overrides `REDIS_HOST`/`REDIS_PORT` for integration tests (`host:port`) |
+
+### API Endpoints
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| GET | `/api/v1/cart` | Get current user's cart | Required |
+| POST | `/api/v1/cart/items` | Add item to cart | Required |
+| PUT | `/api/v1/cart/items/{itemId}` | Update item quantity | Required |
+| DELETE | `/api/v1/cart/items/{itemId}` | Remove item from cart | Required |
+| DELETE | `/api/v1/cart` | Clear cart | Required |
+| POST | `/api/v1/cart/checkout` | Convert cart to order | Required |
+| POST | `/api/auth/login` | Local login (username/password) | Public |
+| GET | `/health`, `/health/live`, `/health/ready` | Health probes | Public |
+| GET | `/metrics` | Prometheus metrics | Public |
+
+### API Examples
+```bash
+# Add an item
+curl -X POST http://localhost:8083/api/v1/cart/items \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": "prod-123",
+    "name": "Widget",
+    "quantity": 2,
+    "unitPrice": 29.99
+  }'
+
+# Get cart
+curl http://localhost:8083/api/v1/cart -H "Authorization: Bearer $TOKEN"
+
+# Update quantity
+curl -X PUT http://localhost:8083/api/v1/cart/items/item-123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"quantity": 5}'
+
+# Remove item
+curl -X DELETE http://localhost:8083/api/v1/cart/items/item-123 \
+  -H "Authorization: Bearer $TOKEN"
+
+# Clear cart
+curl -X DELETE http://localhost:8083/api/v1/cart -H "Authorization: Bearer $TOKEN"
+
+# Checkout
+curl -X POST http://localhost:8083/api/v1/cart/checkout \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"shippingAddress": {"street": "123 Main St"}}'
+```
+
+### Integration Tests in CI (External Redis)
+For CI environments that connect to the shared Redis instance, set `REDIS_ADDR` and `REDIS_PASSWORD` from your secret manager (e.g. Vault/ESO) and use the `test-integration-ci` target:
+```bash
+# Run integration tests pointing at external Redis
+REDIS_ADDR=redis.example.com:6379 \
+REDIS_PASSWORD=<from-vault> \
+make test-integration-ci
+```
+
+### Authentication
+1. With `OAUTH2_ENABLED=true`, JWTs are validated via Keycloak JWKS.
+2. With `OAUTH2_ENABLED=false`, use `POST /api/auth/login` to get a local bearer token.
+3. Customer ID comes from token `sub`; `X-User-ID` fallback is available for local tooling.
+4. Protected routes cover every `/api/v1/cart*` endpoint.
+
+### Docker & Kubernetes
+```bash
+# Build + run container locally
+make docker-build
+make docker-run
+
+# Kubernetes deployment
+helm lint helmchart -f ../config-secret-secure/values/local/21-basket-service.yaml
+helm upgrade --install basket-service helmchart --namespace shopping-cart-apps \
+  -f ../config-secret-secure/values/local/21-basket-service.yaml
+```
+
+---
+
+## Architecture
+See **[Service Architecture](docs/architecture/README.md)** for component diagrams, event flow, configuration matrix, and security considerations.
+
+---
+
+## Directory Layout
+```
+shopping-cart-basket/
+├── cmd/server/          # Application entry point
+├── internal/
+│   ├── config/          # Configuration loading
+│   ├── handler/         # HTTP handlers
+│   ├── service/         # Business logic
+│   ├── repository/      # Redis persistence
+│   ├── model/           # Domain models
+│   ├── auth/            # JWT middleware
+│   └── event/           # RabbitMQ publisher
+├── pkg/response/        # Shared response helpers
+├── k8s/                 # Kubernetes manifests
+├── docs/                # Architecture/API/testing/troubleshooting
+└── Makefile, Dockerfile, etc.
+```
+
+---
+
+## Documentation
+
+### Architecture
+- **[Service Architecture](docs/architecture/README.md)** — system design, flows, configuration, security.
+
+### API Reference
+- **[API Reference](docs/api/README.md)** — endpoint details, payloads, and error codes.
+
+### Testing
+- **[Testing Guide](docs/testing/README.md)** — Go unit/integration tests, coverage, linting.
+
+### Troubleshooting
+- **[Troubleshooting Guide](docs/troubleshooting/README.md)** — Redis/auth/data/perf issue playbooks.
+
+### Issue Logs
+- **[README/docs structure drift](docs/issues/2026-03-17-readme-standardization.md)** — documentation standardization record.
+
+---
+
+## Releases
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| v0.1.0 | TBD | Initial release — Go/Gin service, Redis-backed carts, RabbitMQ events |
+
+---
+
+## Related
+- [shopping-cart-infra](https://github.com/wilddog64/shopping-cart-infra)
+- [shopping-cart-order](https://github.com/wilddog64/shopping-cart-order)
+- [shopping-cart-payment](https://github.com/wilddog64/shopping-cart-payment)
+- [shopping-cart-product-catalog](https://github.com/wilddog64/shopping-cart-product-catalog)
+- [shopping-cart-frontend](https://github.com/wilddog64/shopping-cart-frontend)
+
+---
+
+## License
+Apache 2.0

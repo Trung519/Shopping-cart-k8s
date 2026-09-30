@@ -1,0 +1,19 @@
+apiVersion: v2
+name: shopping-observability
+description: Logging observability stack for the shopping-cart lab cluster
+type: application
+version: 0.2.0
+appVersion: "0.1.0"
+dependencies:
+  - name: loki
+    version: 7.2.0
+    repository: file://charts/loki
+    condition: loki.enabled
+  - name: grafana
+    version: 10.5.15
+    repository: file://charts/grafana
+    condition: grafana.enabled
+  - name: fluent-bit
+    version: 0.57.9
+    repository: file://charts/fluent-bit
+    condition: fluent-bit.enabled

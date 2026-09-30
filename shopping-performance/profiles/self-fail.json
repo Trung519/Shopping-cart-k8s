@@ -1,0 +1,20 @@
+{
+  "name": "self-fail",
+  "mode": "smoke",
+  "vusPerFlow": 1,
+  "applicationSpreadSeconds": 0,
+  "slo": {
+    "httpFailureRate": 0.01,
+    "businessSuccessRate": 1.01,
+    "browseP95Ms": 500,
+    "cartP95Ms": 1000,
+    "buyNowP95Ms": 3000,
+    "cartCheckoutP95Ms": 3000,
+    "sellerProductP95Ms": 1500,
+    "sellerApplicationP95Ms": 1500
+  },
+  "stages": [
+    {"duration": "10s", "target": 1},
+    {"duration": "10s", "target": 0}
+  ]
+}

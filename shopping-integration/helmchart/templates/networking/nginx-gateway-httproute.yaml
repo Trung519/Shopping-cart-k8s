@@ -1,0 +1,71 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shopping-cart
+  namespace: {{ .Values.namespaces.apps }}
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.namespaces.gateway }}
+      sectionName: application
+    {{- range $index, $_ := .Values.gateway.hosts.applicationAliases }}
+    - name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.namespaces.gateway }}
+      sectionName: {{ printf "application-%d" $index }}
+    {{- end }}
+  hostnames:
+    - {{ .Values.gateway.hosts.application | quote }}
+    {{- range .Values.gateway.hosts.applicationAliases }}
+    - {{ . | quote }}
+    {{- end }}
+  rules:
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.bff.path }}}}]
+      backendRefs: [{name: {{ .Values.gateway.routes.bff.service }}, port: {{ .Values.gateway.routes.bff.port }}}]
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.products.path }}}}]
+      backendRefs: [{name: {{ .Values.gateway.routes.products.service }}, port: {{ .Values.gateway.routes.products.port }}}]
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.orders.path }}}}]
+      backendRefs: [{name: {{ .Values.gateway.routes.orders.service }}, port: {{ .Values.gateway.routes.orders.port }}}]
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.cart.path }}}}]
+      filters:
+        - type: URLRewrite
+          urlRewrite: {path: {type: ReplacePrefixMatch, replacePrefixMatch: {{ .Values.gateway.routes.cart.rewrite }}}}
+      backendRefs: [{name: {{ .Values.gateway.routes.cart.service }}, port: {{ .Values.gateway.routes.cart.port }}}]
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.auth.path }}}}]
+      backendRefs: [{name: {{ .Values.gateway.routes.auth.service }}, port: {{ .Values.gateway.routes.auth.port }}}]
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.payment.path }}}}]
+      filters:
+        - type: URLRewrite
+          urlRewrite: {path: {type: ReplacePrefixMatch, replacePrefixMatch: {{ .Values.gateway.routes.payment.rewrite }}}}
+      backendRefs:
+        - name: {{ .Values.gateway.routes.payment.service }}
+          namespace: {{ .Values.gateway.routes.payment.namespace }}
+          port: {{ .Values.gateway.routes.payment.port }}
+    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.frontend.path }}}}]
+      backendRefs: [{name: {{ .Values.gateway.routes.frontend.service }}, port: {{ .Values.gateway.routes.frontend.port }}}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: keycloak, namespace: {{ .Values.namespaces.identity }}}
+spec:
+  parentRefs:
+    - {name: {{ .Values.gateway.name }}, namespace: {{ .Values.namespaces.gateway }}, sectionName: keycloak}
+  hostnames: [{{ .Values.gateway.hosts.keycloak | quote }}]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /}}]
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - {name: X-Forwarded-Port, value: {{ .Values.gateway.externalPort | quote }}}
+      backendRefs: [{name: {{ .Values.keycloak.name }}, port: {{ .Values.keycloak.servicePort }}}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: vault, namespace: {{ .Values.namespaces.vault }}}
+spec:
+  parentRefs:
+    - {name: {{ .Values.gateway.name }}, namespace: {{ .Values.namespaces.gateway }}, sectionName: vault}
+  hostnames: [{{ .Values.gateway.hosts.vault | quote }}]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /}}]
+      backendRefs: [{name: {{ .Values.vault.serviceName }}, port: {{ .Values.vault.servicePort }}}]

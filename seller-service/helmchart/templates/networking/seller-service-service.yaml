@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Service
+metadata: {name: {{ include "seller.name" . }}, namespace: {{ include "seller.namespace" . }}}
+spec:
+  type: {{ .Values.service.type }}
+  ports: [{name: {{ .Values.service.portName }}, port: {{ .Values.service.port }}, targetPort: {{ .Values.service.targetPort }}}]
+  selector: {app.kubernetes.io/name: {{ include "seller.name" . }}, app.kubernetes.io/instance: {{ .Release.Name }}}
