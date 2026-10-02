@@ -7,12 +7,12 @@ deployment:
   preStopDelaySeconds: 10
 image:
   repository: commerce-bff
-  tag: v0.1.3
+  tag: v0.1.4-otel-20261002
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 commonLabels: {}
 podAnnotations:
-  prometheus.io/scrape: "false"
+  prometheus.io/scrape: 'false'
 serviceAccount:
   create: true
   name: commerce-bff
@@ -26,10 +26,10 @@ config:
   HTTP_ADDRESS: :8080
   PUBLIC_URL: http://shopping-cart.localhost:8080
   FRONTEND_URL: http://shopping-cart.localhost:8080
-  COOKIE_SECURE: "false"
+  COOKIE_SECURE: 'false'
   SESSION_TTL: 8h
   REDIS_ADDRESS: redis-cart.shopping-cart-data.svc.cluster.local:6379
-  REDIS_DB: "2"
+  REDIS_DB: '2'
   OIDC_ISSUER_INTERNAL: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart
   OIDC_AUTHORIZE_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/auth
   OIDC_END_SESSION_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/logout
@@ -41,6 +41,12 @@ config:
   PAYMENT_URL: http://payment-service.shopping-cart-payment.svc.cluster.local
   ACCOUNT_URL: http://account-service.shopping-cart-apps.svc.cluster.local
   SELLER_URL: http://seller-service.shopping-cart-apps.svc.cluster.local
+  OTEL_SERVICE_NAME: commerce-bff
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=shopping-cart
+  OTEL_TRACES_SAMPLER: parentbased_always_on
+  OTEL_SDK_DISABLED: 'false'
 externalSecret:
   enabled: true
   storeName: vault-backend
@@ -48,28 +54,65 @@ externalSecret:
   targetName: commerce-bff-secrets
   refreshInterval: 1h
   data:
-    - secretKey: SESSION_SECRET
-      remoteRef: {key: shopping-cart/apps/commerce-bff, property: sessionSecret}
-    - secretKey: OIDC_CLIENT_SECRET
-      remoteRef: {key: shopping-cart/apps/commerce-bff, property: oidcClientSecret}
-    - secretKey: REDIS_PASSWORD
-      remoteRef: {key: shopping-cart/data/redis-cart, property: password}
+  - secretKey: SESSION_SECRET
+    remoteRef:
+      key: shopping-cart/apps/commerce-bff
+      property: sessionSecret
+  - secretKey: OIDC_CLIENT_SECRET
+    remoteRef:
+      key: shopping-cart/apps/commerce-bff
+      property: oidcClientSecret
+  - secretKey: REDIS_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/redis-cart
+      property: password
 probes:
-  startup: {path: /health/ready, initialDelaySeconds: 2, periodSeconds: 3, timeoutSeconds: 2, failureThreshold: 30}
-  liveness: {path: /health/live, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3}
-  readiness: {path: /health/ready, initialDelaySeconds: 3, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+  startup:
+    path: /health/ready
+    initialDelaySeconds: 2
+    periodSeconds: 3
+    timeoutSeconds: 2
+    failureThreshold: 30
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
 resources:
-  requests: {cpu: 50m, memory: 64Mi}
-  limits: {cpu: 300m, memory: 192Mi}
-podSecurityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, fsGroup: 65532}
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 300m
+    memory: 192Mi
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
 containerSecurityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-  capabilities: {drop: [ALL]}
+  capabilities:
+    drop:
+    - ALL
 affinity: {}
 destinationRule:
   enabled: true
   host: commerce-bff.shopping-cart-apps.svc.cluster.local
   connectionPool:
-    http: {http1MaxPendingRequests: 100, maxRequestsPerConnection: 100}
-  outlierDetection: {consecutive5xxErrors: 5, interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50}
+    http:
+      http1MaxPendingRequests: 100
+      maxRequestsPerConnection: 100
+  outlierDetection:
+    consecutive5xxErrors: 5
+    interval: 10s
+    baseEjectionTime: 30s
+    maxEjectionPercent: 50

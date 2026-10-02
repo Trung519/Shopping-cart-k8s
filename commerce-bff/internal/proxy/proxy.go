@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/wilddog64/commerce-bff/internal/session"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Target struct {
@@ -26,6 +27,7 @@ func NewTarget(publicPrefix, upstreamPrefix, rawURL string, publicRead bool, all
 
 func (t Target) ServeHTTP(w http.ResponseWriter, r *http.Request, authSession *session.Session) {
 	upstream := httputil.NewSingleHostReverseProxy(t.URL)
+	upstream.Transport = otelhttp.NewTransport(http.DefaultTransport)
 	originalDirector := upstream.Director
 	upstream.Director = func(req *http.Request) {
 		originalDirector(req)

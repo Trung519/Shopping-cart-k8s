@@ -1,0 +1,211 @@
+{{- if .Values.tracing.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+  namespace: {{ .Values.namespace.name }}
+data:
+  tempo.yaml: |
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+    ingester:
+      max_block_duration: 5m
+    compactor:
+      compaction:
+        block_retention: 48h
+    storage:
+      trace:
+        backend: local
+        wal:
+          path: /var/tempo/wal
+        local:
+          path: /var/tempo/blocks
+    overrides:
+      defaults:
+        ingestion:
+          rate_limit_bytes: 1048576
+          burst_size_bytes: 2097152
+        global:
+          max_bytes_per_trace: 1048576
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+  namespace: {{ .Values.namespace.name }}
+spec:
+  selector: {app.kubernetes.io/name: tempo}
+  ports:
+    - {name: http, port: 3200, targetPort: http}
+    - {name: grpc-otlp, port: 4317, targetPort: grpc-otlp}
+    - {name: http-otlp, port: 4318, targetPort: http-otlp}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tempo
+  namespace: {{ .Values.namespace.name }}
+spec:
+  serviceName: tempo
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: tempo}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: tempo, app.kubernetes.io/part-of: shopping-cart}
+      annotations:
+        checksum/tracing: {{ printf "%s-%s" .Chart.Version (.Values.tracing | toJson) | sha256sum | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001}
+      containers:
+        - name: tempo
+          image: {{ .Values.tracing.tempo.image }}
+          args: ["-config.file=/etc/tempo/tempo.yaml", "-target=all"]
+          ports:
+            - {name: http, containerPort: 3200}
+            - {name: grpc-otlp, containerPort: 4317}
+            - {name: http-otlp, containerPort: 4318}
+          resources:
+            {{- toYaml .Values.tracing.tempo.resources | nindent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          readinessProbe: {httpGet: {path: /ready, port: http}, initialDelaySeconds: 10, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /ready, port: http}, initialDelaySeconds: 60, periodSeconds: 15, failureThreshold: 6}
+          volumeMounts:
+            - {name: config, mountPath: /etc/tempo, readOnly: true}
+            - {name: storage, mountPath: /var/tempo}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: config, configMap: {name: tempo-config}}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+  volumeClaimTemplates:
+    - metadata: {name: storage}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: {{ .Values.tracing.tempo.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.tracing.tempo.size }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: {{ .Values.namespace.name }}
+data:
+  collector.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 192
+        spike_limit_mib: 32
+      attributes/privacy:
+        actions:
+          - {key: db.statement, action: delete}
+          - {key: db.query.text, action: delete}
+          - {key: http.url, action: delete}
+          - {key: http.target, action: delete}
+          - {key: url.full, action: delete}
+          - {key: url.query, action: delete}
+      batch:
+        timeout: 1s
+        send_batch_size: 128
+        send_batch_max_size: 256
+    exporters:
+      otlp/tempo:
+        endpoint: tempo.shopping-cart-observability.svc.cluster.local:4317
+        tls:
+          insecure: true
+        timeout: 5s
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 10s
+          max_elapsed_time: 60s
+        sending_queue:
+          enabled: true
+          num_consumers: 2
+          queue_size: 128
+    service:
+      extensions: [health_check]
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, attributes/privacy, batch]
+          exporters: [otlp/tempo]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: {{ .Values.namespace.name }}
+spec:
+  selector: {app.kubernetes.io/name: otel-collector}
+  ports:
+    - {name: grpc-otlp, port: 4317, targetPort: grpc-otlp}
+    - {name: http-otlp, port: 4318, targetPort: http-otlp}
+    - {name: metrics, port: 8888, targetPort: metrics}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: {{ .Values.namespace.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: otel-collector}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: otel-collector, app.kubernetes.io/part-of: shopping-cart}
+      annotations:
+        checksum/tracing: {{ printf "%s-%s" .Chart.Version (.Values.tracing | toJson) | sha256sum | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001}
+      containers:
+        - name: collector
+          image: {{ .Values.tracing.collector.image }}
+          args: ["--config=/etc/otel/collector.yaml"]
+          env: [{name: GOMEMLIMIT, value: 160MiB}]
+          ports:
+            - {name: grpc-otlp, containerPort: 4317}
+            - {name: http-otlp, containerPort: 4318}
+            - {name: metrics, containerPort: 8888}
+            - {name: health, containerPort: 13133}
+          resources:
+            {{- toYaml .Values.tracing.collector.resources | nindent 12 }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          readinessProbe: {httpGet: {path: /, port: health}, initialDelaySeconds: 3, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /, port: health}, initialDelaySeconds: 15, periodSeconds: 10}
+          volumeMounts:
+            - {name: config, mountPath: /etc/otel, readOnly: true}
+      volumes:
+        - {name: config, configMap: {name: otel-collector-config}}
+{{- end }}

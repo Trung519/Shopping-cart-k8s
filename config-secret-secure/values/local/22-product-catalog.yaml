@@ -2,27 +2,33 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: shopping-cart-product-catalog
-  tag: v1.3.2
+  tag: v1.4.3-otel-20261002
   pullPolicy: IfNotPresent
 config:
   ENVIRONMENT: production
-  DEBUG: "false"
+  DEBUG: 'false'
   HOST: 0.0.0.0
-  PORT: "8080"
+  PORT: '8080'
   DB_HOST: postgresql-products.shopping-cart-data.svc.cluster.local
-  DB_PORT: "5432"
+  DB_PORT: '5432'
   DB_NAME: products
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  RABBITMQ_PORT: "5672"
+  RABBITMQ_PORT: '5672'
   RABBITMQ_VHOST: /
   VAULT_ADDR: http://vault.vault.svc.cluster.local:8200
   VAULT_RABBITMQ_PATH: rabbitmq
   VAULT_ROLE: product-catalog
-  RATE_LIMIT_PER_MINUTE: "100"
-  RATE_LIMIT_PER_SECOND: "20"
-  RATE_LIMIT_BURST: "50"
-  OAUTH2_ENABLED: "true"
+  RATE_LIMIT_PER_MINUTE: '100'
+  RATE_LIMIT_PER_SECOND: '20'
+  RATE_LIMIT_BURST: '50'
+  OAUTH2_ENABLED: 'true'
   OAUTH2_ISSUER_URI: http://keycloak.localhost:8080/realms/shopping-cart
   OAUTH2_JWKS_URI: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart/protocol/openid-connect/certs
   OAUTH2_CLIENT_ID: product-catalog
-  LOCAL_AUTH_ENABLED: "false"
+  LOCAL_AUTH_ENABLED: 'false'
+  OTEL_SERVICE_NAME: product-catalog
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=shopping-cart
+  OTEL_TRACES_SAMPLER: parentbased_always_on
+  OTEL_SDK_DISABLED: 'false'

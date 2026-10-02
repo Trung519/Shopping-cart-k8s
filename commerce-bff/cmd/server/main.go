@@ -10,13 +10,17 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/wilddog64/commerce-bff/internal/config"
 	"github.com/wilddog64/commerce-bff/internal/oidc"
 	commerceproxy "github.com/wilddog64/commerce-bff/internal/proxy"
 	"github.com/wilddog64/commerce-bff/internal/session"
+	"github.com/wilddog64/commerce-bff/internal/telemetry"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const sessionCookie = "shopcart_session"
@@ -29,6 +33,17 @@ type server struct {
 }
 
 func main() {
+	shutdown, err := telemetry.Init(context.Background())
+	if err != nil {
+		log.Fatal("telemetry initialization failed")
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdown(ctx); err != nil {
+			log.Print("telemetry shutdown incomplete")
+		}
+	}()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +68,20 @@ func main() {
 	mux.HandleFunc("/api/v2/auth/logout", s.logout)
 	mux.HandleFunc("/api/v2/", s.api)
 	log.Printf("commerce-bff listening on %s", cfg.Address)
-	log.Fatal(http.ListenAndServe(cfg.Address, securityHeaders(mux)))
+	handler := otelhttp.NewHandler(telemetry.RequestLog(securityHeaders(mux)), "commerce-bff",
+		otelhttp.WithFilter(func(r *http.Request) bool { return !strings.HasPrefix(r.URL.Path, "/health/") }))
+	httpServer := &http.Server{Addr: cfg.Address, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	stop, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
+	go func() {
+		<-stop.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		httpServer.Shutdown(ctx)
+	}()
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Print("HTTP server stopped unexpectedly")
+	}
 }
 
 func mustTargets(cfg config.Config) []commerceproxy.Target {

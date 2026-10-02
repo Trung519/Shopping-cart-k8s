@@ -8,10 +8,11 @@ from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
 from .config import get_settings
-from .database import init_db
+from .database import engine, init_db
 from .order_consumer import OrderCreatedConsumer
 from .routers import health, products
 from .security import setup_security
+from .telemetry import instrument
 
 # Configure structured logging
 structlog.configure(
@@ -55,6 +56,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         yield
     finally:
         order_consumer.stop()
+        if telemetry_provider is not None:
+            telemetry_provider.shutdown()
 
     logger.info("shutting_down_application")
 
@@ -76,6 +79,7 @@ app.mount("/metrics", metrics_app)
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
+telemetry_provider = instrument(app, engine)
 
 
 def main() -> None:

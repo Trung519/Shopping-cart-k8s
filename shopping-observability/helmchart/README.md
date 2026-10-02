@@ -71,3 +71,28 @@ The three migrated data PVs use Retain. Namespace deletion does not erase them;
 storage disposal must be a separate explicit operation.
 Grafana `persistence.volumeName` is pinned to this lab's existing PV; this binding
 must remain unchanged while adopting the bound PVC with server-side apply.
+# Distributed tracing (chart 0.5.0)
+
+Tempo and OTel Collector are managed by this same chart in `shopping-cart-observability`.
+The real read-products flow is instrumented in commerce-bff (Go OTel HTTP server/client)
+and product-catalog (Python FastAPI/SQLAlchemy). OTLP HTTP goes to Collector 4318;
+Collector applies memory limiting, removes SQL text/URL query attributes, batches
+and exports to Tempo via OTLP gRPC. Grafana datasource UID: `tempo`.
+
+Tempo: pinned version 2.9.0, one replica, local-path 5Gi PVC, 48h block retention.
+Collector: pinned version 0.140.0, one replica, bounded in-memory queue, retry 60s,
+256Mi memory limit. Queue does not survive a restart. Sampling is ParentBased 100%
+for instrumented services. DB spans represent application-side calls, not server
+execution profiling. RabbitMQ/payment/checkout tracing is not claimed by this flow.
+
+Local application images must be built/imported before syncing their existing Argo
+Applications. Build product-catalog with `Dockerfile.telemetry` to preserve existing
+application dependencies; the standard Dockerfiles also install the OTel packages.
+For k3d on ARM64, export with `docker save --platform=linux/arm64`, then import the
+tar archive; inspect node image inventories because k3d can exit 0 despite digest errors.
+
+Use existing Argo app `shopping-observability`, then `product-catalog`, then
+`commerce-bff`, at the pushed dev revision. Keep prune disabled. Source values are
+`config-secret-secure/values/local/22-product-catalog.yaml` and `25-commerce-bff.yaml`.
+Instrumentation can be disabled using `OTEL_SDK_DISABLED=true` and a normal rollout.
+Keep Tempo PVC during rollback. `local-path` capacity is not a filesystem hard quota.

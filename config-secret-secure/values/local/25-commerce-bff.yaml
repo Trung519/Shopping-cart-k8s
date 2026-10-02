@@ -1,13 +1,13 @@
 namespaceOverride: shopping-cart-apps
-replicaCount: 2
+replicaCount: 1
 image:
   repository: commerce-bff
-  tag: v0.1.3
+  tag: v0.1.4-otel-20261002
   pullPolicy: IfNotPresent
 config:
   PUBLIC_URL: http://shopping-cart.localhost:8080
   FRONTEND_URL: http://shopping-cart.localhost:8080
-  COOKIE_SECURE: "false"
+  COOKIE_SECURE: 'false'
   OIDC_ISSUER_INTERNAL: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart
   OIDC_AUTHORIZE_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/auth
   OIDC_END_SESSION_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/logout
@@ -19,3 +19,9 @@ config:
   PAYMENT_URL: http://payment-service.shopping-cart-payment.svc.cluster.local
   ACCOUNT_URL: http://account-service.shopping-cart-apps.svc.cluster.local
   SELLER_URL: http://seller-service.shopping-cart-apps.svc.cluster.local
+  OTEL_SERVICE_NAME: commerce-bff
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=shopping-cart
+  OTEL_TRACES_SAMPLER: parentbased_always_on
+  OTEL_SDK_DISABLED: 'false'

@@ -32,6 +32,10 @@ dependencies = [
     "structlog>=24.1.0",
     "httpx>=0.26.0",
     "python-jose[cryptography]>=3.3.0",
+    "opentelemetry-sdk==1.31.0",
+    "opentelemetry-exporter-otlp-proto-http==1.31.0",
+    "opentelemetry-instrumentation-fastapi==0.52b0",
+    "opentelemetry-instrumentation-sqlalchemy==0.52b0",
 ]
 
 [project.optional-dependencies]

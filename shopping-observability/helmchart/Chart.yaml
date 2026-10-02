@@ -1,8 +1,8 @@
 apiVersion: v2
 name: shopping-observability
-description: Logs and metrics observability for the shopping-cart lab cluster
+description: Logs, metrics and distributed tracing for Shopping Cart
 type: application
-version: 0.4.0
+version: 0.5.0
 appVersion: 0.1.0
 dependencies:
 - name: loki
