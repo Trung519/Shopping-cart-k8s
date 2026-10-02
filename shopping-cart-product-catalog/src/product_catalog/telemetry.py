@@ -7,6 +7,7 @@ import os
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -32,6 +33,7 @@ def instrument(app, engine):
     ))
     trace.set_tracer_provider(provider)
     SQLAlchemyInstrumentor().instrument(engine=engine)
+    HTTPXClientInstrumentor().instrument(tracer_provider=provider)
 
     def response_hook(span, scope, message):
         if message.get("type") != "http.response.start":
