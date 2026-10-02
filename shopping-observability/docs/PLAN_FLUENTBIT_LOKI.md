@@ -217,3 +217,8 @@ Logging vẫn sử dụng chart/namespace hiện hữu. Chi tiết tracing và s
 - Dashboard giữ9panels metrics và có link Traces — Tempo; trace waterfall đã mở trực tiếp trên Grafana và lưu ảnh. Cả logs và traces là dữ liệu từ ứng dụng chạy thật.
 - Chart hiện tại0.5.0, runtime config commit `0f7d73f17ce47c8d2b13b6e4e45c12c327e25356` đã push dev và Argo shopping-observability Synced/Healthy/Succeeded.
 - Tempo retention48h độc lập Loki retention48h; không xóa namespace/PVC cũ khi thêm tracing. Sự cố OOM làm node/control-plane restart đã được ghi rõ trong tracing plan; logging regression pass sau recovery.
+
+
+## Full-system tracing completion (2026-10-03)
+
+The subsequent full-system stage is completed:30 real tagged HTTP requests,666 verified spans across8 SDK services plus frontend/gateway mesh, exact Java RabbitMQ producer→Python consumer parent, SQL/Redis dependencies and Loki correlation. See [PLAN_FULL_SYSTEM_TRACING.md](PLAN_FULL_SYSTEM_TRACING.md) for final tags, corrections, commands, selective Argo procedure, capacity and limitations. Original stage results above remain historical.

@@ -244,3 +244,8 @@ Image đang import local: Git/Argo không tự build hoặc phân phối image. 
 - `Log_agents/session_logs_20261002_174737.log`
 
 Logs nằm trong workspace Agent_setup, không đưa raw logs/Secrets vào Git. Các plan được copy vào `shopping-observability/docs/` trong Git để review; helper/evidence/ảnh giữ ở artifact local.
+
+
+## Full-system tracing completion (2026-10-03)
+
+The subsequent full-system stage is completed:30 real tagged HTTP requests,666 verified spans across8 SDK services plus frontend/gateway mesh, exact Java RabbitMQ producer→Python consumer parent, SQL/Redis dependencies and Loki correlation. See [PLAN_FULL_SYSTEM_TRACING.md](PLAN_FULL_SYSTEM_TRACING.md) for final tags, corrections, commands, selective Argo procedure, capacity and limitations. Original stage results above remain historical.

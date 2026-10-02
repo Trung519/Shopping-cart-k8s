@@ -1,0 +1,247 @@
+{
+  "timestamp_utc": "2026-10-02T19:28:56.082663+00:00",
+  "deployments": {
+    "account-service": {
+      "image": "account-service:v0.2.3-otel-20261003",
+      "ready": true
+    },
+    "seller-service": {
+      "image": "seller-service:v0.1.2-otel-20261003",
+      "ready": true
+    },
+    "basket-service": {
+      "image": "shopping-cart-basket:v1.4.2-otel-20261003",
+      "ready": true
+    },
+    "commerce-bff": {
+      "image": "commerce-bff:v0.1.6-otel-20261003",
+      "ready": true
+    },
+    "product-catalog": {
+      "image": "shopping-cart-product-catalog:v1.4.7-otel-20261003",
+      "ready": true
+    },
+    "order-service": {
+      "image": "shopping-cart-order:v1.1.1-tracing-errorfix-20261003",
+      "ready": true
+    },
+    "payment-service": {
+      "image": "shopping-cart-payment:v0.1.2-tracing-rolefix-20261003",
+      "ready": true
+    },
+    "keycloak": {
+      "ready": true,
+      "agent": "shopping-otel-javaagent:2.31.1-r1"
+    }
+  },
+  "images_on_nodes": {
+    "k3d-lab-k8s-agent-0": {
+      "account-service:v0.2.3-otel-20261003": "linux/arm64",
+      "seller-service:v0.1.2-otel-20261003": "linux/arm64",
+      "shopping-cart-basket:v1.4.2-otel-20261003": "linux/arm64",
+      "commerce-bff:v0.1.6-otel-20261003": "linux/arm64",
+      "shopping-cart-product-catalog:v1.4.7-otel-20261003": "linux/arm64",
+      "shopping-cart-order:v1.1.1-tracing-errorfix-20261003": "linux/arm64",
+      "shopping-cart-payment:v0.1.2-tracing-rolefix-20261003": "linux/arm64",
+      "shopping-otel-javaagent:2.31.1-r1": "linux/arm64"
+    },
+    "k3d-lab-k8s-agent-1": {
+      "account-service:v0.2.3-otel-20261003": "linux/arm64",
+      "seller-service:v0.1.2-otel-20261003": "linux/arm64",
+      "shopping-cart-basket:v1.4.2-otel-20261003": "linux/arm64",
+      "commerce-bff:v0.1.6-otel-20261003": "linux/arm64",
+      "shopping-cart-product-catalog:v1.4.7-otel-20261003": "linux/arm64",
+      "shopping-cart-order:v1.1.1-tracing-errorfix-20261003": "linux/arm64",
+      "shopping-cart-payment:v0.1.2-tracing-rolefix-20261003": "linux/arm64",
+      "shopping-otel-javaagent:2.31.1-r1": "linux/arm64"
+    },
+    "k3d-lab-k8s-server-0": {
+      "account-service:v0.2.3-otel-20261003": "linux/arm64",
+      "seller-service:v0.1.2-otel-20261003": "linux/arm64",
+      "shopping-cart-basket:v1.4.2-otel-20261003": "linux/arm64",
+      "commerce-bff:v0.1.6-otel-20261003": "linux/arm64",
+      "shopping-cart-product-catalog:v1.4.7-otel-20261003": "linux/arm64",
+      "shopping-cart-order:v1.1.1-tracing-errorfix-20261003": "linux/arm64",
+      "shopping-cart-payment:v0.1.2-tracing-rolefix-20261003": "linux/arm64",
+      "shopping-otel-javaagent:2.31.1-r1": "linux/arm64"
+    }
+  },
+  "nodes": {
+    "k3d-lab-k8s-agent-0": {
+      "Ready": "True",
+      "MemoryPressure": "False",
+      "DiskPressure": "False"
+    },
+    "k3d-lab-k8s-agent-1": {
+      "Ready": "True",
+      "MemoryPressure": "False",
+      "DiskPressure": "False"
+    },
+    "k3d-lab-k8s-server-0": {
+      "Ready": "True",
+      "MemoryPressure": "False",
+      "DiskPressure": "False"
+    }
+  },
+  "argo": {
+    "account-service": {
+      "sync": "OutOfSync",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f",
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f"
+      ]
+    },
+    "seller-service": {
+      "sync": "OutOfSync",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f",
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f"
+      ]
+    },
+    "basket-service": {
+      "sync": "Synced",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f",
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f"
+      ]
+    },
+    "commerce-bff": {
+      "sync": "Synced",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f",
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f"
+      ]
+    },
+    "product-catalog": {
+      "sync": "Synced",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "65cd9dcbc5e1b83b9ae370682d85514ee359fbad",
+        "65cd9dcbc5e1b83b9ae370682d85514ee359fbad"
+      ]
+    },
+    "order-service": {
+      "sync": "Synced",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "18b01fa8a778f7bf8011d49f25834729ebe6cabd",
+        "18b01fa8a778f7bf8011d49f25834729ebe6cabd"
+      ]
+    },
+    "payment-service": {
+      "sync": "Synced",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "6f16f7f9bc60256962e2cb32d50847abf6abfe5e",
+        "6f16f7f9bc60256962e2cb32d50847abf6abfe5e"
+      ]
+    },
+    "shopping-integration": {
+      "sync": "OutOfSync",
+      "health": "Degraded",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f",
+        "8b9c3798427535a4b488df8efd40bb7cd79f153f"
+      ]
+    },
+    "shopping-observability": {
+      "sync": "Synced",
+      "health": "Healthy",
+      "last_operation": "Succeeded",
+      "deployed_revisions": [
+        "18b01fa8a778f7bf8011d49f25834729ebe6cabd",
+        "18b01fa8a778f7bf8011d49f25834729ebe6cabd"
+      ]
+    }
+  },
+  "pod_metrics": {
+    "shopping-cart-apps": [
+      "NAME                               CPU(cores)   MEMORY(bytes)   ",
+      "account-service-58df55967b-wqfnk   3m           61Mi            ",
+      "basket-service-54d4456d97-5j8z8    4m           68Mi            ",
+      "commerce-bff-687d96b8f7-6lp9c      4m           72Mi            ",
+      "frontend-549d4869f5-tj6zl          3m           74Mi            ",
+      "order-service-6ff4dd6dd5-qsmv4     8m           467Mi           ",
+      "product-catalog-55d95df794-w4b66   8m           138Mi           ",
+      "seller-service-776fcb668c-2pg4g    3m           65Mi"
+    ],
+    "shopping-cart-payment": [
+      "NAME                               CPU(cores)   MEMORY(bytes)   ",
+      "payment-service-6867889459-bxbxp   8m           568Mi"
+    ],
+    "shopping-cart-identity": [
+      "NAME                       CPU(cores)   MEMORY(bytes)   ",
+      "keycloak-9bdd7d6c6-f8m8g   7m           594Mi           ",
+      "postgres-keycloak-0        5m           86Mi"
+    ],
+    "shopping-cart-observability": [
+      "NAME                                                         CPU(cores)   MEMORY(bytes)   ",
+      "alertmanager-shopmon-alertmanager-0                          1m           53Mi            ",
+      "fluent-bit-9njhs                                             3m           23Mi            ",
+      "fluent-bit-gmp82                                             2m           26Mi            ",
+      "fluent-bit-kpjcq                                             3m           23Mi            ",
+      "loki-0                                                       9m           127Mi           ",
+      "loki-gateway-7cbf8cb968-gj97n                                2m           12Mi            ",
+      "otel-collector-68f6bd5fd9-w7d6f                              5m           82Mi            ",
+      "prometheus-shopmon-prometheus-0                              27m          621Mi           ",
+      "shopmon-grafana-6b7dd64d67-tk9zb                             15m          622Mi           ",
+      "shopmon-operator-5fc6c6856f-jv58m                            3m           38Mi            ",
+      "shopping-observability-kube-state-metrics-559c7f685b-7qmnw   2m           42Mi            ",
+      "shopping-observability-prometheus-node-exporter-2kgf8        1m           15Mi            ",
+      "shopping-observability-prometheus-node-exporter-nn5vd        1m           17Mi            ",
+      "shopping-observability-prometheus-node-exporter-w89s9        2m           18Mi            ",
+      "tempo-0                                                      9m           261Mi"
+    ]
+  },
+  "frontend_existing_restarts": {
+    "frontend": 1,
+    "istio-proxy": 0
+  },
+  "vm_memory_mib": {
+    "MemTotal": 9936,
+    "MemAvailable": 1372,
+    "SwapTotal": 1023,
+    "SwapFree": 125
+  },
+  "vm_loadavg": [
+    "2.06",
+    "2.33",
+    "2.46"
+  ],
+  "rabbitmq_queues": [
+    "Timeout: 60.0 seconds ...",
+    "Listing queues for vhost / ...",
+    "name\tconsumers\tmessages_ready\tmessages_unacknowledged",
+    "inventory.order-cancelled\t0\t6\t0",
+    "inventory.order-created.dlq\t0\t0\t0",
+    "audit.cart-events\t0\t19\t0",
+    "inventory.order-paid\t0\t9\t0",
+    "inventory.order-created\t1\t0\t0",
+    "audit.inventory-events\t0\t2\t0"
+  ],
+  "prometheus_targets_up": 35,
+  "collector_metrics": {
+    "sum(otelcol_receiver_accepted_spans_total)": 3110.0,
+    "sum(otelcol_receiver_refused_spans_total)": 0.0,
+    "sum(otelcol_exporter_sent_spans_total)": 3108.0,
+    "sum(otelcol_exporter_send_failed_spans_total)": 0.0,
+    "sum(otelcol_exporter_queue_size)": 0.0,
+    "sum(otelcol_exporter_enqueue_failed_spans_total)": null
+  },
+  "tracing_alert_rules": [
+    "ShoppingTracingTargetDown",
+    "ShoppingTraceExportFailed"
+  ]
+}

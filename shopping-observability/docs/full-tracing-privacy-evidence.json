@@ -1,0 +1,9 @@
+{
+  "probe": "synthetic processor regression only; business workflow acceptance is separate",
+  "trace_id": "71c6c06f44a64fcd932b812edc2ce111",
+  "sql_text_removed": true,
+  "exception_message_removed": true,
+  "exception_stacktrace_removed": true,
+  "status_message_removed": true,
+  "error_type_and_code_retained": true
+}

@@ -96,3 +96,8 @@ Use existing Argo app `shopping-observability`, then `product-catalog`, then
 `config-secret-secure/values/local/22-product-catalog.yaml` and `25-commerce-bff.yaml`.
 Instrumentation can be disabled using `OTEL_SDK_DISABLED=true` and a normal rollout.
 Keep Tempo PVC during rollback. `local-path` capacity is not a filesystem hard quota.
+
+
+## Full-system tracing acceptance
+
+Full request instrumentation for8 SDK services and namespace Istio tracing is implemented.30 real requests/666 verified spans include checkout, order confirmation, JDBC/Redis and exact RabbitMQ producer→consumer propagation. [Final execution plan](../docs/PLAN_FULL_SYSTEM_TRACING.md) records corrections, selective existing-Argo operations, evidence and explicit limits. Observability remains in shopping-cart-observability; the existing Istio mesh merge and additive order-status SQL migration are explicit prerequisites.

@@ -151,3 +151,8 @@ Chart hiện tại0.5.0, vẫn namespace shopping-cart-observability và existin
 - [x] Ghi sự cố thiếu RAM/OOM và recovery đúng container/Pgpool; giữ PVC/database, swapVMtạm1GiB còn bật.
 
 Plan chi tiết: [PLAN_TEMPO_OTEL.md](PLAN_TEMPO_OTEL.md). Logging cập nhật: [PLAN_FLUENTBIT_LOKI.md](PLAN_FLUENTBIT_LOKI.md). Chưa chứng minh checkout/payment/RabbitMQ hoặc HA toàn stack; chưa chạy soak test dài hạn/đợi retention48h.
+
+
+## Full-system tracing completion (2026-10-03)
+
+The subsequent full-system stage is completed:30 real tagged HTTP requests,666 verified spans across8 SDK services plus frontend/gateway mesh, exact Java RabbitMQ producer→Python consumer parent, SQL/Redis dependencies and Loki correlation. See [PLAN_FULL_SYSTEM_TRACING.md](PLAN_FULL_SYSTEM_TRACING.md) for final tags, corrections, commands, selective Argo procedure, capacity and limitations. Original stage results above remain historical.

@@ -37,3 +37,8 @@ kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/te
 Commands assume repository root. When operated from Agent_setup, use its approved trace runner for every substantive command. Rendered output can contain Secrets: inspect privately and do not commit or copy raw rendered manifests into logs. Grafana is available at `http://localhost:3000` while its port-forward runs; port 3000 is not an Ingress/NodePort exposure.
 
 Credentials remain in existing Kubernetes Secrets; do not print them into execution logs or Git. The final deployment recovered a VM global OOM and uses temporary VM swap. Read the incident section in the tracing plan before repeating resource-intensive builds. The stack is single-replica/local-storage, not an HA production deployment. ExternalSecret provider errors in the two application Argo health statuses are documented separately from their healthy running workloads.
+
+
+## Full-system tracing acceptance
+
+Full request instrumentation for8 SDK services and namespace Istio tracing is implemented.30 real requests/666 verified spans include checkout, order confirmation, JDBC/Redis and exact RabbitMQ producer→consumer propagation. [Final execution plan](docs/PLAN_FULL_SYSTEM_TRACING.md) records corrections, selective existing-Argo operations, evidence and explicit limits. Observability remains in shopping-cart-observability; the existing Istio mesh merge and additive order-status SQL migration are explicit prerequisites.
