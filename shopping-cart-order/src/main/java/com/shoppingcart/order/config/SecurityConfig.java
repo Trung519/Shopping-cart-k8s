@@ -1,5 +1,7 @@
 package com.shoppingcart.order.config;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -64,6 +66,7 @@ public class SecurityConfig {
 
             // Allow all requests (authentication handled at API gateway level)
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/api/**").permitAll()
                 .anyRequest().denyAll());

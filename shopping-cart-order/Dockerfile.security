@@ -1,0 +1,9 @@
+# Preserve the exact live image; correct only internal ERROR dispatcher handling.
+FROM shopping-cart-order:v1.1.0-local-20260905 AS baseline
+FROM eclipse-temurin:21-jdk-alpine AS compiler
+COPY --from=baseline /app/BOOT-INF/lib/ /libs/
+COPY src/main/java/com/shoppingcart/order/config/SecurityConfig.java /src/SecurityConfig.java
+COPY src/main/java/com/shoppingcart/order/config/OAuth2SecurityConfig.java /src/OAuth2SecurityConfig.java
+RUN javac -J-Xmx192m -cp '/libs/*' -d /compiled /src/*.java
+FROM baseline
+COPY --from=compiler --chown=1001:1001 /compiled/com/shoppingcart/order/config/ /app/BOOT-INF/classes/com/shoppingcart/order/config/

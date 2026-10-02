@@ -3,7 +3,7 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: shopping-cart-order
-  tag: v1.1.0-local-20260905
+  tag: v1.1.1-tracing-errorfix-20261003
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 commonLabels: {}
