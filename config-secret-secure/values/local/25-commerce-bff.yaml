@@ -2,7 +2,7 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: commerce-bff
-  tag: v0.1.4-otel-20261002
+  tag: v0.1.5-otel-20261002
   pullPolicy: IfNotPresent
 config:
   PUBLIC_URL: http://shopping-cart.localhost:8080

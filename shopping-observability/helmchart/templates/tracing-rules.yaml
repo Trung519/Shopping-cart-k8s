@@ -1,0 +1,31 @@
+{{- if and .Values.tracing.enabled .Values.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopping-tracing
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  groups:
+    - name: shopping.tracing
+      rules:
+        - alert: ShoppingTracingTargetDown
+          expr: up{job=~"tempo|otel-collector"} == 0
+          for: 2m
+          labels:
+            severity: warning
+            namespace: {{ .Values.namespace.name }}
+          annotations:
+            summary: Tracing component is unreachable
+            description: 'Prometheus cannot scrape {{ "{{ $labels.job }}" }} for 2 minutes. Check pod readiness and service endpoints.'
+        - alert: ShoppingTraceExportFailed
+          expr: increase(otelcol_exporter_send_failed_spans_total{job="otel-collector"}[5m]) > 0
+          for: 2m
+          labels:
+            severity: warning
+            namespace: {{ .Values.namespace.name }}
+          annotations:
+            summary: Collector cannot export traces to Tempo
+            description: Export failures occurred in the last 5 minutes. Inspect Tempo readiness and the bounded Collector retry queue.
+{{- end }}

@@ -73,7 +73,9 @@ func main() {
 	httpServer := &http.Server{Addr: cfg.Address, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	stop, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignals()
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-stop.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
@@ -81,7 +83,9 @@ func main() {
 	}()
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Print("HTTP server stopped unexpectedly")
+		return
 	}
+	<-shutdownDone
 }
 
 func mustTargets(cfg config.Config) []commerceproxy.Target {

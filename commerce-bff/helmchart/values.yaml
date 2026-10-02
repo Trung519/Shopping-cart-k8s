@@ -7,7 +7,7 @@ deployment:
   preStopDelaySeconds: 10
 image:
   repository: commerce-bff
-  tag: v0.1.4-otel-20261002
+  tag: v0.1.5-otel-20261002
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 commonLabels: {}

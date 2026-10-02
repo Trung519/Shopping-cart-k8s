@@ -13,6 +13,14 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased
 
+request_logger = logging.getLogger("product_catalog.telemetry")
+request_logger.setLevel(logging.INFO)
+if not request_logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    request_logger.addHandler(handler)
+request_logger.propagate = False
+
 
 def instrument(app, engine):
     if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true" or not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -30,8 +38,9 @@ def instrument(app, engine):
             return
         context = span.get_span_context()
         # No headers, URL query, body, SQL parameters or identity in this log.
-        logging.getLogger("product_catalog.telemetry").warning(json.dumps({
+        request_logger.info(json.dumps({
             "event": "http_request_completed", "service": "product-catalog",
+            "level": "info",
             "trace_id": format(context.trace_id, "032x"),
             "span_id": format(context.span_id, "016x"),
             "method": scope.get("method"), "status": message.get("status"),
