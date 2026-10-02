@@ -46,7 +46,7 @@ config:
     span_id=%X{span_id} %logger{36} - %msg%n'
 initContainers:
 - name: otel-javaagent
-  image: shopping-otel-javaagent:2.31.1
+  image: shopping-otel-javaagent:2.31.1-r1
   imagePullPolicy: IfNotPresent
   resources:
     requests:
