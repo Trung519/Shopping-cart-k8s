@@ -87,13 +87,17 @@ spec:
         - {name: config, configMap: {name: tempo-config}}
         - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
   volumeClaimTemplates:
-    - metadata: {name: storage}
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata: {name: storage}
       spec:
         accessModes: [ReadWriteOnce]
+        volumeMode: Filesystem
         storageClassName: {{ .Values.tracing.tempo.storageClass }}
         resources:
           requests:
             storage: {{ .Values.tracing.tempo.size }}
+      status: {phase: Pending}
 ---
 apiVersion: v1
 kind: ConfigMap
