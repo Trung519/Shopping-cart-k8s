@@ -2,7 +2,7 @@
   "uid": "shopcart-live",
   "title": "Shopping Cart — Live Metrics",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "refresh": "30s",
   "time": {
@@ -283,6 +283,43 @@
           "displayMode": "list",
           "placement": "bottom"
         }
+      }
+    },
+    {
+      "id": 9,
+      "type": "logs",
+      "title": "Shopping Cart — Live Logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"fluent-bit\",kubernetes_namespace_name=~\"shopping-cart-(apps|payment|identity|data|gateway)\"}",
+          "queryType": "range",
+          "maxLines": 100,
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true
       }
     }
   ]
