@@ -1,0 +1,12 @@
+# Minimal correction over the exact existing local application image.
+FROM shopping-cart-payment:v0.1.1 AS baseline
+FROM eclipse-temurin:21-jdk-alpine AS compiler
+COPY --from=baseline /app/BOOT-INF/lib/ /libs/
+COPY src/main/java/com/shoppingcart/payment/config/SecurityConfig.java /src/SecurityConfig.java
+COPY src/main/java/com/shoppingcart/payment/config/KeycloakRealmAuthoritiesConverter.java /src/KeycloakRealmAuthoritiesConverter.java
+RUN javac -J-Xmx192m -cp '/libs/*' -d /compiled /src/*.java
+COPY tests/SecurityAuthorityAcceptance.java /tests/SecurityAuthorityAcceptance.java
+RUN javac -J-Xmx128m -cp '/libs/*:/compiled' -d /tests /tests/SecurityAuthorityAcceptance.java \
+    && java -Xmx128m -cp '/libs/*:/compiled:/tests' SecurityAuthorityAcceptance
+FROM baseline
+COPY --from=compiler --chown=1001:1001 /compiled/com/shoppingcart/payment/config/ /app/BOOT-INF/classes/com/shoppingcart/payment/config/
