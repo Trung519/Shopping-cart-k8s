@@ -31,8 +31,8 @@ config:
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
   RABBITMQ_PORT: '5672'
   RABBITMQ_VHOST: /
-  OAUTH2_ISSUER_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
-  OAUTH2_JWK_SET_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart/protocol/openid-connect/certs
+  OAUTH2_ISSUER_URI: http://keycloak.localhost:8080/realms/shopping-cart
+  OAUTH2_JWK_SET_URI: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart/protocol/openid-connect/certs
   PAYMENT_GATEWAY_DEFAULT: mock
   STRIPE_ENABLED: 'false'
   PAYPAL_ENABLED: 'false'
