@@ -1,83 +1,39 @@
 # Shopping Observability
 
-Helm umbrella chart for the lab shopping-cart logging stack.
+Chart 0.5.0 manages logs, metrics, alerts and distributed tracing in the existing namespace `shopping-cart-observability`, through the existing Argo CD Application `shopping-observability` on branch `dev`.
 
-This folder vendors upstream Helm charts under `helmchart/charts/` so external chart code is kept separate from local configuration:
+## Components
 
-- `grafana/loki` chart `7.2.0`
-- `grafana/grafana` chart `10.5.15`
-- `fluent/fluent-bit` chart `0.57.9`
+- kube-prometheus-stack 91.8.2: Prometheus, Alertmanager, Grafana (`shopmon-grafana`), node exporter and kube-state-metrics. Prometheus retention is 3 days / 3GB.
+- Loki chart 7.2.0: single binary, local PVC 8Gi, retention 48h. The existing disk-pressure cleaner requests asynchronous deletion of the oldest four-hour window at 90% usage; local-path does not enforce a hard filesystem quota.
+- Fluent Bit chart 0.57.9: one pod per node, container logs with Kubernetes metadata and persistent Tail DB. Current Read_from_Head is Off; acceptance uses a newly generated request rather than promising backfill of historical log files.
+- Tempo image 2.9.0: monolithic, PVC 5Gi, WAL/local blocks, compactor retention 48h; OTLP only on ClusterIP.
+- OTel Collector contrib image 0.140.0: OTLP receivers, memory limiter, privacy processing, batching and bounded retry queue; sends traces to Tempo. The observed binary reports 0.140.1 despite the pinned image tag.
+- Go BFF and Python FastAPI/SQLAlchemy catalog instrumentation: W3C context propagation and PostgreSQL client dependency spans.
 
-The local chart configures:
+The standalone vendored Grafana chart 10.5.15 remains disabled. Active Grafana is the kube-prometheus-stack instance; do not deploy a second Grafana or a new observability namespace to extend this stack.
 
-- Namespace: `shopping-cart-observability`
-- Fluent Bit DaemonSet to collect `/var/log/containers/*.log`
-- Loki single-binary with filesystem storage, PVC `8Gi`, retention `48h`
-- Loki disk-pressure cleaner requests deletion of the oldest 4-hour log window when the PVC reaches 90%
-- Grafana with a Loki datasource
+## Plans and verified scope
 
-The pinned Grafana chart is marked deprecated by its upstream repository. It is retained for this lab release because it is the latest version available in the configured upstream repository; migrate the vendored dependency before treating this stack as a production baseline.
+- [Full observability plan](docs/PLAN.md)
+- [Fluent Bit + Loki execution plan](docs/PLAN_FLUENTBIT_LOKI.md)
+- [Tempo + Collector + OTel execution plan, real evidence and Argo operations](docs/PLAN_TEMPO_OTEL.md)
 
-## Review
+The verified flow is a real public products GET through Gateway → commerce-bff → product-catalog → PostgreSQL. The trace contains two application services and DB client spans; browser/Gateway server spans, checkout, payment and RabbitMQ tracing are not implemented by this stage. Grafana links both logs → trace and trace → logs, and the existing live metrics dashboard links to Tempo.
 
-Render everything before applying:
+## Operate through the existing Argo Applications
 
-```bash
-helm template shopping-observability ./helmchart \
-  --namespace shopping-cart-observability
-```
-
-Check chart structure:
+Edit existing source/chart/local overrides → lint/render and review → build/import fresh application image tags → commit/push dev → Refresh/Diff/Sync the existing Applications. In the current local-image setup, Argo does not build or distribute images. Both Argo sources must use the same pushed revision. Keep prune=false for this change and preserve PVCs. Follow the tracing plan for selective sync rather than reapplying unrelated CRDs/hooks/data charts.
 
 ```bash
-helm lint ./helmchart
+helm lint shopping-observability/helmchart
+helm template shopping-observability shopping-observability/helmchart --namespace shopping-cart-observability
+kubectl --context k3d-lab-k8s -n shopping-cart-observability get pods,pvc,svc
+kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/shopmon-grafana 3000:80
+kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/shopmon-prometheus 9090:9090
+kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/tempo 3200:3200
 ```
 
-## Apply after review approval
+Commands assume repository root. When operated from Agent_setup, use its approved trace runner for every substantive command. Rendered output can contain Secrets: inspect privately and do not commit or copy raw rendered manifests into logs. Grafana is available at `http://localhost:3000` while its port-forward runs; port 3000 is not an Ingress/NodePort exposure.
 
-```bash
-kubectl --context k3d-lab-k8s create namespace shopping-cart-observability \
-  --dry-run=client -o yaml | kubectl --context k3d-lab-k8s apply -f -
-
-kubectl --context k3d-lab-k8s label namespace shopping-cart-observability \
-  istio-injection=disabled --overwrite
-
-helm upgrade --install shopping-observability ./helmchart \
-  --kube-context k3d-lab-k8s \
-  --namespace shopping-cart-observability
-```
-
-## Verify
-
-```bash
-kubectl --context k3d-lab-k8s -n shopping-cart-observability get pods,pvc,svc -o wide
-kubectl --context k3d-lab-k8s -n shopping-cart-observability get ds fluent-bit -o wide
-kubectl --context k3d-lab-k8s -n shopping-cart-observability get pods \
-  -l app.kubernetes.io/name=fluent-bit \
-  -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,READY:.status.containerStatuses[*].ready
-kubectl --context k3d-lab-k8s -n shopping-cart-observability logs ds/fluent-bit --tail=100
-kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/grafana 3000:80
-```
-
-Grafana local URL:
-
-```text
-http://localhost:3000
-```
-
-Retrieve the generated Grafana admin password from its Kubernetes Secret:
-
-```bash
-kubectl --context k3d-lab-k8s -n shopping-cart-observability \
-  get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 --decode
-```
-
-After rollout, acceptance requires Fluent Bit `DESIRED=3` and `READY=3`, with exactly one Fluent Bit pod on each cluster node. Query Loki by the generated `kubernetes_host`, `kubernetes_namespace_name`, `kubernetes_pod_name`, and `kubernetes_container_name` labels to verify end-to-end ingestion from all nodes and namespaces. `Read_from_Head On` plus the host-persisted Tail DB ensures existing container log files are collected once and subsequent restarts resume from their saved offsets.
-
-The disk-pressure cleaner checks allocated bytes under `/var/loki` every five minutes against the configured `8Gi` capacity. This is intentional because the cluster's `local-path` provisioner does not enforce a filesystem quota. At 90% usage (about `7.2Gi`) it asks Loki to delete the actual oldest four-hour window, then waits four hours before another pressure deletion. Deletion is asynchronous and handled by the Loki compactor; it never removes PVC files directly.
-
-Note: if Rancher webhook is not Ready, namespace creation can fail. Check it first:
-
-```bash
-kubectl --context k3d-lab-k8s -n cattle-system get pods,svc,endpoints -o wide
-```
+Credentials remain in existing Kubernetes Secrets; do not print them into execution logs or Git. The final deployment recovered a VM global OOM and uses temporary VM swap. Read the incident section in the tracing plan before repeating resource-intensive builds. The stack is single-replica/local-storage, not an HA production deployment. ExternalSecret provider errors in the two application Argo health statuses are documented separately from their healthy running workloads.
