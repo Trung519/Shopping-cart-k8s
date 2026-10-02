@@ -238,6 +238,7 @@ metrics:
       enabled: true
       storageClassName: local-path
       size: 2Gi
+      volumeName: pvc-5dff0ade-a2f5-45c5-b466-69749a8ff6d8
     sidecar:
       dashboards:
         enabled: true
