@@ -5,6 +5,8 @@ import json
 import ssl
 from typing import Optional
 
+from opentelemetry import propagate, trace
+from opentelemetry.trace import SpanKind
 import pika
 import structlog
 
@@ -33,13 +35,22 @@ class PikaPublisher:
         self._channel.exchange_declare(exchange=exchange, exchange_type=exchange_type, durable=durable)
 
     def publish(self, exchange: str, routing_key: str, body: dict) -> bool:
-        self._channel.basic_publish(
-            exchange=exchange,
-            routing_key=routing_key,
-            body=json.dumps(body, default=str),
-            properties=pika.BasicProperties(content_type="application/json", delivery_mode=2),
-            mandatory=True,
-        )
+        with trace.get_tracer(__name__).start_as_current_span(
+            routing_key + " publish", kind=SpanKind.PRODUCER,
+            attributes={"messaging.system": "rabbitmq", "messaging.destination.name": exchange,
+                        "messaging.rabbitmq.destination.routing_key": routing_key},
+        ) as span:
+            headers = {}
+            propagate.inject(headers)
+            self._channel.basic_publish(
+                exchange=exchange, routing_key=routing_key,
+                body=json.dumps(body, default=str),
+                properties=pika.BasicProperties(content_type="application/json", delivery_mode=2, headers=headers),
+                mandatory=True,
+            )
+            current = span.get_span_context()
+            logger.info("rabbitmq_message_published", trace_id=format(current.trace_id,"032x"),
+                        span_id=format(current.span_id,"016x"), routing_key=routing_key)
         return True
 
 

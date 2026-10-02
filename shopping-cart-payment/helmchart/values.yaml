@@ -1,31 +1,59 @@
 serviceName: payment-service
 namespaceOverride: shopping-cart-payment
 replicaCount: 1
-image: {repository: shopping-cart-payment, tag: v0.1.1, pullPolicy: IfNotPresent}
+image:
+  repository: shopping-cart-payment
+  tag: v0.1.1
+  pullPolicy: IfNotPresent
 imagePullSecrets: []
-commonLabels: {pci-scope: "true"}
-podAnnotations: {prometheus.io/scrape: "true", prometheus.io/port: "8084", prometheus.io/path: /actuator/prometheus}
-serviceAccount: {create: true, name: payment-service}
-service: {type: ClusterIP, port: 80, targetPort: 8084, portName: http}
+commonLabels:
+  pci-scope: 'true'
+podAnnotations:
+  prometheus.io/scrape: 'true'
+  prometheus.io/port: '8084'
+  prometheus.io/path: /actuator/prometheus
+serviceAccount:
+  create: true
+  name: payment-service
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8084
+  portName: http
 containerPort: 8084
 config:
-  SERVER_PORT: "8084"
-  SPRING_CLOUD_VAULT_ENABLED: "false"
+  SERVER_PORT: '8084'
+  SPRING_CLOUD_VAULT_ENABLED: 'false'
   DB_HOST: postgresql-payment.shopping-cart-data.svc.cluster.local
-  DB_PORT: "5432"
+  DB_PORT: '5432'
   DB_NAME: payments
   DB_SSLMODE: disable
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  RABBITMQ_PORT: "5672"
+  RABBITMQ_PORT: '5672'
   RABBITMQ_VHOST: /
   OAUTH2_ISSUER_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
   OAUTH2_JWK_SET_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart/protocol/openid-connect/certs
   PAYMENT_GATEWAY_DEFAULT: mock
-  STRIPE_ENABLED: "false"
-  PAYPAL_ENABLED: "false"
+  STRIPE_ENABLED: 'false'
+  PAYPAL_ENABLED: 'false'
   PAYPAL_MODE: sandbox
-  ENCRYPTION_ENABLED: "true"
+  ENCRYPTION_ENABLED: 'true'
   LOG_LEVEL: INFO
+  OTEL_SERVICE_NAME: payment-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext
+  JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar
+  LOGGING_PATTERN_CONSOLE: '%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level trace_id=%X{trace_id}
+    span_id=%X{span_id} %logger{36} - %msg%n'
 externalSecret:
   enabled: true
   storeName: vault-backend
@@ -33,32 +61,119 @@ externalSecret:
   targetName: payment-service-secrets
   refreshInterval: 1h
   data:
-    - {secretKey: DB_USERNAME, remoteRef: {key: shopping-cart/data/postgresql-payment, property: username}}
-    - {secretKey: DB_PASSWORD, remoteRef: {key: shopping-cart/data/postgresql-payment, property: password}}
-    - {secretKey: RABBITMQ_USERNAME, remoteRef: {key: shopping-cart/data/rabbitmq, property: username}}
-    - {secretKey: RABBITMQ_PASSWORD, remoteRef: {key: shopping-cart/data/rabbitmq, property: password}}
-    - {secretKey: SPRING_RABBITMQ_USERNAME, remoteRef: {key: shopping-cart/data/rabbitmq, property: username}}
-    - {secretKey: SPRING_RABBITMQ_PASSWORD, remoteRef: {key: shopping-cart/data/rabbitmq, property: password}}
-    - {secretKey: ENCRYPTION_KEY, remoteRef: {key: shopping-cart/payment/encryption, property: key}}
+  - secretKey: DB_USERNAME
+    remoteRef:
+      key: shopping-cart/data/postgresql-payment
+      property: username
+  - secretKey: DB_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/postgresql-payment
+      property: password
+  - secretKey: RABBITMQ_USERNAME
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: username
+  - secretKey: RABBITMQ_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: password
+  - secretKey: SPRING_RABBITMQ_USERNAME
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: username
+  - secretKey: SPRING_RABBITMQ_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: password
+  - secretKey: ENCRYPTION_KEY
+    remoteRef:
+      key: shopping-cart/payment/encryption
+      property: key
 probes:
-  startup: {path: /actuator/health, initialDelaySeconds: 10, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 30}
-  liveness: {path: /actuator/health/liveness, initialDelaySeconds: 60, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
-  readiness: {path: /actuator/health/readiness, initialDelaySeconds: 30, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+  startup:
+    path: /actuator/health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 30
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
 resources:
-  requests: {cpu: 200m, memory: 512Mi}
-  limits: {cpu: "1", memory: 1Gi}
-podSecurityContext: {runAsNonRoot: true, runAsUser: 1001, fsGroup: 1001}
-containerSecurityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
-extraVolumes: [{name: tmp, emptyDir: {}}]
-extraVolumeMounts: [{name: tmp, mountPath: /tmp}]
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: '1'
+    memory: 1Gi
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1000
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+extraVolumes:
+- name: tmp
+  emptyDir: {}
+- name: otel-agent
+  emptyDir:
+    sizeLimit: 32Mi
+extraVolumeMounts:
+- name: tmp
+  mountPath: /tmp
+- name: otel-agent
+  mountPath: /otel
+  readOnly: true
 affinity: {}
 destinationRule:
   enabled: true
   host: payment-service.shopping-cart-payment.svc.cluster.local
-  connectionPool: {http: {http1MaxPendingRequests: 100, maxRequestsPerConnection: 20}}
-  outlierDetection: {consecutive5xxErrors: 5, interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50}
+  connectionPool:
+    http:
+      http1MaxPendingRequests: 100
+      maxRequestsPerConnection: 20
+  outlierDetection:
+    consecutive5xxErrors: 5
+    interval: 10s
+    baseEjectionTime: 30s
+    maxEjectionPercent: 50
 outbound:
   enabled: false
   hosts: []
   ports:
-    - {number: 443, name: https, protocol: TLS}
+  - number: 443
+    name: https
+    protocol: TLS
+initContainers:
+- name: otel-javaagent
+  image: shopping-otel-javaagent:2.31.1
+  imagePullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  volumeMounts:
+  - name: otel-agent
+    mountPath: /otel

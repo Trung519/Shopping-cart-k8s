@@ -1,10 +1,25 @@
 namespaceOverride: shopping-cart-apps
 replicaCount: 1
-image: {repository: seller-service, tag: v0.1.1, pullPolicy: IfNotPresent}
+image:
+  repository: seller-service
+  tag: v0.1.2-otel-20261003
+  pullPolicy: IfNotPresent
 config:
   DB_HOST: postgresql-marketplace.shopping-cart-data.svc.cluster.local
-  DB_PORT: "5432"
+  DB_PORT: '5432'
   DB_NAME: seller_service
   DB_USER: seller_service
   DB_SSLMODE: disable
   ACCOUNT_SERVICE_URL: http://account-service.shopping-cart-apps.svc.cluster.local
+  OTEL_SERVICE_NAME: seller-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext

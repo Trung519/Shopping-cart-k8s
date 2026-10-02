@@ -1,7 +1,22 @@
 namespaceOverride: shopping-cart-apps
 replicaCount: 1
-image: {repository: account-service, tag: v0.1.2, pullPolicy: IfNotPresent}
+image:
+  repository: account-service
+  tag: v0.2.3-otel-20261003
+  pullPolicy: IfNotPresent
 config:
   KEYCLOAK_URL: http://keycloak.shopping-cart-identity.svc.cluster.local
   KEYCLOAK_REALM: shopping-cart
   KEYCLOAK_CLIENT_ID: account-service
+  OTEL_SERVICE_NAME: account-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext

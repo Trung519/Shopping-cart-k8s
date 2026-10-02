@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"io"
 	"net/http"
 	"net/url"
@@ -35,7 +36,7 @@ type tokenResponse struct {
 }
 
 func New(issuer, authorizeURL, endSessionURL, clientID, clientSecret, redirectURL string) *Client {
-	return &Client{issuer: strings.TrimRight(issuer, "/"), authorizeURL: authorizeURL, endSessionURL: endSessionURL, clientID: clientID, clientSecret: clientSecret, redirectURL: redirectURL, httpClient: &http.Client{Timeout: 10 * time.Second}}
+	return &Client{issuer: strings.TrimRight(issuer, "/"), authorizeURL: authorizeURL, endSessionURL: endSessionURL, clientID: clientID, clientSecret: clientSecret, redirectURL: redirectURL, httpClient: &http.Client{Timeout: 10 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}}
 }
 
 func (c *Client) AuthorizationURL(state, challenge string) string {

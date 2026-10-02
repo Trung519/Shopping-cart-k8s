@@ -18,6 +18,51 @@ gateway:
   hosts:
     application: shopping-cart.localhost
     applicationAliases:
-      - localhost
+    - localhost
     keycloak: keycloak.localhost
     vault: vault.localhost
+keycloak:
+  initContainers:
+  - name: otel-javaagent
+    image: shopping-otel-javaagent:2.31.1
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+    volumeMounts:
+    - name: otel-agent
+      mountPath: /otel
+  extraVolumes:
+  - name: otel-agent
+    emptyDir:
+      sizeLimit: 32Mi
+  extraVolumeMounts:
+  - name: otel-agent
+    mountPath: /otel
+    readOnly: true
+  podSecurityContext:
+    fsGroup: 1000
+  config:
+    OTEL_SERVICE_NAME: keycloak
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+    OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+    OTEL_TRACES_SAMPLER: always_on
+    OTEL_METRICS_EXPORTER: none
+    OTEL_LOGS_EXPORTER: none
+    OTEL_SDK_DISABLED: 'false'
+    OTEL_BSP_MAX_QUEUE_SIZE: '512'
+    OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+    OTEL_BSP_SCHEDULE_DELAY: '1000'
+    OTEL_PROPAGATORS: tracecontext
+    JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar

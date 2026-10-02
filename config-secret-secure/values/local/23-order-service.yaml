@@ -2,30 +2,75 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: shopping-cart-order
-  tag: v1.0.4
+  tag: v1.1.0-local-20260905
   pullPolicy: IfNotPresent
 config:
-  SERVER_PORT: "8080"
+  SERVER_PORT: '8080'
   SPRING_PROFILES_ACTIVE: kubernetes
   DB_HOST: postgresql-orders.shopping-cart-data.svc.cluster.local
-  DB_PORT: "5432"
+  DB_PORT: '5432'
   DB_NAME: orders
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  RABBITMQ_PORT: "5672"
+  RABBITMQ_PORT: '5672'
   RABBITMQ_VHOST: /
   SPRING_RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_PORT: '5672'
   SPRING_RABBITMQ_VIRTUAL_HOST: /
-  VAULT_ENABLED: "false"
-  SPRING_CLOUD_VAULT_ENABLED: "false"
+  VAULT_ENABLED: 'false'
+  SPRING_CLOUD_VAULT_ENABLED: 'false'
   VAULT_ADDR: http://vault.vault.svc.cluster.local:8200
   VAULT_ROLE: order-publisher
   VAULT_RABBITMQ_PATH: rabbitmq
-  RATE_LIMIT_PER_MINUTE: "100"
-  RATE_LIMIT_PER_SECOND: "20"
-  RATE_LIMIT_BURST: "50"
+  RATE_LIMIT_PER_MINUTE: '100'
+  RATE_LIMIT_PER_SECOND: '20'
+  RATE_LIMIT_BURST: '50'
   LOGGING_LEVEL_ROOT: INFO
   LOGGING_LEVEL_COM_SHOPPINGCART: INFO
-  OAUTH2_ENABLED: "false"
+  OAUTH2_ENABLED: 'false'
   OAUTH2_ISSUER_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
   OAUTH2_JWK_SET_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart/protocol/openid-connect/certs
+  OTEL_SERVICE_NAME: order-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext
+  JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar
+  LOGGING_PATTERN_CONSOLE: '%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level trace_id=%X{trace_id}
+    span_id=%X{span_id} %logger{36} - %msg%n'
+initContainers:
+- name: otel-javaagent
+  image: shopping-otel-javaagent:2.31.1
+  imagePullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+  volumeMounts:
+  - name: otel-agent
+    mountPath: /otel
+extraVolumes:
+- name: otel-agent
+  emptyDir:
+    sizeLimit: 32Mi
+extraVolumeMounts:
+- name: otel-agent
+  mountPath: /otel
+  readOnly: true
+podSecurityContext:
+  fsGroup: 1000

@@ -1,0 +1,18 @@
+enableTracing: true
+extensionProviders:
+  - name: shopping-otel
+    opentelemetry:
+      service: otel-collector.shopping-cart-observability.svc.cluster.local
+      port: 4317
+  - name: shopping-safe-logs
+    envoyFileAccessLog:
+      path: /dev/stdout
+      logFormat:
+        labels:
+          event: mesh_http_request_completed
+          trace_id: "%TRACE_ID%"
+          method: "%REQ(:METHOD)%"
+          response_code: "%RESPONSE_CODE%"
+          duration_ms: "%DURATION%"
+          route: "%ROUTE_NAME%"
+          response_flags: "%RESPONSE_FLAGS%"

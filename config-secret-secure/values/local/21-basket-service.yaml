@@ -2,20 +2,32 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: shopping-cart-basket
-  tag: v1.4.0
+  tag: v1.4.2-otel-20261003
   pullPolicy: IfNotPresent
 config:
-  SERVER_PORT: "8083"
+  SERVER_PORT: '8083'
   REDIS_HOST: redis-cart.shopping-cart-data.svc.cluster.local
-  REDIS_PORT: "6379"
+  REDIS_PORT: '6379'
   CART_TTL: 168h
-  OAUTH2_ENABLED: "true"
+  OAUTH2_ENABLED: 'true'
   OAUTH2_ISSUER_URI: http://keycloak.localhost:8080/realms/shopping-cart
   OAUTH2_JWKS_URI: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart/protocol/openid-connect/certs
   OAUTH2_CLIENT_ID: commerce-bff
-  LOCAL_AUTH_ENABLED: "false"
+  LOCAL_AUTH_ENABLED: 'false'
   LOCAL_AUTH_TOKEN_TTL: 24h
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  RABBITMQ_PORT: "5672"
+  RABBITMQ_PORT: '5672'
   ORDER_SERVICE_URL: http://order-service.shopping-cart-apps.svc.cluster.local
   LOG_LEVEL: info
+  OTEL_SERVICE_NAME: basket-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/wilddog64/seller-service/internal/telemetry"
 	"log"
 	"net/http"
 	"net/url"
@@ -35,6 +36,17 @@ type reviewInput struct {
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
 func main() {
+
+	flush, err := telemetry.Init(context.Background())
+	if err != nil {
+		panic("tracing initialization failed")
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = flush(ctx)
+	}()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	databaseURL := buildDatabaseURL()
@@ -56,9 +68,11 @@ func main() {
 	mux.HandleFunc("/api/v1/me", s.me)
 	mux.HandleFunc("/api/v1/applications", s.applications)
 	mux.HandleFunc("/api/v1/applications/", s.review)
-	srv := &http.Server{Addr: env("HTTP_ADDRESS", ":8080"), Handler: headers(mux), ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: env("HTTP_ADDRESS", ":8080"), Handler: telemetry.HTTPHandler("seller-service", headers(mux)), ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("seller-service listening on %s", srv.Addr)
-	log.Fatal(srv.ListenAndServe())
+	if err := telemetry.Serve(srv); err != nil {
+		log.Printf("HTTP server stopped: %v", err)
+	}
 }
 func (s *server) ready(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.Ping(r.Context()); err != nil {

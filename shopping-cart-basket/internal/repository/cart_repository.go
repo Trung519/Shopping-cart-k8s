@@ -9,6 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/user/shopping-cart-basket/internal/model"
+	"github.com/user/shopping-cart-basket/internal/telemetry"
 )
 
 var (
@@ -39,6 +40,7 @@ func NewRedisCartRepository(addr, password string, db int, ttl time.Duration) (*
 	})
 
 	// Test connection
+	client.AddHook(telemetry.RedisHook{})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

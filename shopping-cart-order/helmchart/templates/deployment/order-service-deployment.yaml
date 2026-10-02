@@ -26,6 +26,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ include "shopping-app.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -55,4 +59,3 @@ spec:
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-

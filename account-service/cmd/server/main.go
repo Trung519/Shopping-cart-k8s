@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"github.com/wilddog64/account-service/internal/telemetry"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +32,17 @@ type userInput struct {
 }
 
 func main() {
+
+	flush, err := telemetry.Init(context.Background())
+	if err != nil {
+		panic("tracing initialization failed")
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = flush(ctx)
+	}()
+
 	secret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
 	if secret == "" {
 		log.Fatal("KEYCLOAK_CLIENT_SECRET is required")
@@ -45,9 +58,11 @@ func main() {
 	mux.HandleFunc("/api/v1/users", s.users)
 	mux.HandleFunc("/api/v1/users/", s.user)
 	mux.HandleFunc("/internal/v1/users/", s.internalUser)
-	srv := &http.Server{Addr: env("HTTP_ADDRESS", ":8080"), Handler: headers(mux), ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: env("HTTP_ADDRESS", ":8080"), Handler: telemetry.HTTPHandler("account-service", headers(mux)), ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("account-service listening on %s", srv.Addr)
-	log.Fatal(srv.ListenAndServe())
+	if err := telemetry.Serve(srv); err != nil {
+		log.Printf("HTTP server stopped: %v", err)
+	}
 }
 
 func (s *server) internalUser(w http.ResponseWriter, r *http.Request) {

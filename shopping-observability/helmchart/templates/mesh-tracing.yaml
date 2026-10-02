@@ -1,0 +1,22 @@
+{{- if .Values.tracing.enabled }}
+{{- range $namespace := list "shopping-cart-apps" "shopping-cart-payment" "shopping-cart-gateway" "shopping-cart-identity" }}
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: shopping-request-tracing
+  namespace: {{ $namespace }}
+spec:
+  accessLogging:
+    - providers:
+        - name: shopping-safe-logs
+  tracing:
+    - providers:
+        - name: shopping-otel
+      randomSamplingPercentage: 100
+      useRequestIdForTraceSampling: false
+      customTags:
+        deployment.environment:
+          literal: {value: local}
+{{- end }}
+{{- end }}

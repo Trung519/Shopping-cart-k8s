@@ -3,13 +3,13 @@ namespaceOverride: shopping-cart-apps
 replicaCount: 1
 image:
   repository: shopping-cart-basket
-  tag: v1.4.1-rabbit-20260906
+  tag: v1.4.2-otel-20261003
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 commonLabels: {}
 podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "8083"
+  prometheus.io/scrape: 'true'
+  prometheus.io/port: '8083'
   prometheus.io/path: /metrics
 serviceAccount:
   create: true
@@ -21,20 +21,32 @@ service:
   portName: http
 containerPort: 8083
 config:
-  SERVER_PORT: "8083"
+  SERVER_PORT: '8083'
   REDIS_HOST: redis-cart.shopping-cart-data.svc.cluster.local
-  REDIS_PORT: "6379"
+  REDIS_PORT: '6379'
   CART_TTL: 168h
-  OAUTH2_ENABLED: "false"
+  OAUTH2_ENABLED: 'false'
   OAUTH2_ISSUER_URI: http://keycloak.shopping-cart-identity.svc.cluster.local:8080/realms/shopping-cart
   OAUTH2_JWKS_URI: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart/protocol/openid-connect/certs
-  LOCAL_AUTH_ENABLED: "true"
+  LOCAL_AUTH_ENABLED: 'true'
   LOCAL_AUTH_TOKEN_TTL: 24h
   RABBITMQ_HOST: rabbitmq.shopping-cart-data.svc.cluster.local
-  RABBITMQ_PORT: "5672"
+  RABBITMQ_PORT: '5672'
   ORDER_SERVICE_URL: http://order-service.shopping-cart-apps.svc.cluster.local
   PRODUCT_CATALOG_URL: http://product-catalog.shopping-cart-apps.svc.cluster.local
   LOG_LEVEL: info
+  OTEL_SERVICE_NAME: basket-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_SDK_DISABLED: 'false'
+  OTEL_BSP_MAX_QUEUE_SIZE: '512'
+  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
+  OTEL_BSP_SCHEDULE_DELAY: '1000'
+  OTEL_PROPAGATORS: tracecontext
 externalSecret:
   enabled: true
   storeName: vault-backend
@@ -42,28 +54,62 @@ externalSecret:
   targetName: basket-service-secrets
   refreshInterval: 1h
   data:
-    - secretKey: REDIS_PASSWORD
-      remoteRef: {key: shopping-cart/data/redis-cart, property: password}
-    - secretKey: LOCAL_AUTH_JWT_SECRET
-      remoteRef: {key: shopping-cart/shared/auth, property: jwtSecret}
-    - secretKey: INTERNAL_API_TOKEN
-      remoteRef: {key: shopping-cart/shared/auth, property: jwtSecret}
-    - secretKey: RABBITMQ_USERNAME
-      remoteRef: {key: shopping-cart/data/rabbitmq, property: username}
-    - secretKey: RABBITMQ_PASSWORD
-      remoteRef: {key: shopping-cart/data/rabbitmq, property: password}
+  - secretKey: REDIS_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/redis-cart
+      property: password
+  - secretKey: LOCAL_AUTH_JWT_SECRET
+    remoteRef:
+      key: shopping-cart/shared/auth
+      property: jwtSecret
+  - secretKey: INTERNAL_API_TOKEN
+    remoteRef:
+      key: shopping-cart/shared/auth
+      property: jwtSecret
+  - secretKey: RABBITMQ_USERNAME
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: username
+  - secretKey: RABBITMQ_PASSWORD
+    remoteRef:
+      key: shopping-cart/data/rabbitmq
+      property: password
 probes:
-  startup: {path: /health, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 30}
-  liveness: {path: /health/live, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
-  readiness: {path: /health/ready, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3}
+  startup:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
 resources:
-  requests: {cpu: 100m, memory: 128Mi}
-  limits: {cpu: 500m, memory: 256Mi}
-podSecurityContext: {runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000}
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
 containerSecurityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-  capabilities: {drop: [ALL]}
+  capabilities:
+    drop:
+    - ALL
 extraVolumes: []
 extraVolumeMounts: []
 affinity: {}
@@ -71,5 +117,11 @@ destinationRule:
   enabled: true
   host: basket-service.shopping-cart-apps.svc.cluster.local
   connectionPool:
-    http: {http1MaxPendingRequests: 100, maxRequestsPerConnection: 20}
-  outlierDetection: {consecutive5xxErrors: 5, interval: 10s, baseEjectionTime: 30s, maxEjectionPercent: 50}
+    http:
+      http1MaxPendingRequests: 100
+      maxRequestsPerConnection: 20
+  outlierDetection:
+    consecutive5xxErrors: 5
+    interval: 10s
+    baseEjectionTime: 30s
+    maxEjectionPercent: 50

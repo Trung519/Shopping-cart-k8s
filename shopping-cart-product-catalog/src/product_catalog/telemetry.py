@@ -25,7 +25,7 @@ request_logger.propagate = False
 def instrument(app, engine):
     if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true" or not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
         return None
-    provider = TracerProvider(resource=Resource.create(), sampler=ParentBased(ALWAYS_ON))
+    provider = TracerProvider(resource=Resource.create(), sampler=ALWAYS_ON if os.getenv("OTEL_TRACES_SAMPLER") == "always_on" else ParentBased(ALWAYS_ON))
     provider.add_span_processor(BatchSpanProcessor(
         OTLPSpanExporter(timeout=5), max_queue_size=512,
         max_export_batch_size=128, schedule_delay_millis=1000,

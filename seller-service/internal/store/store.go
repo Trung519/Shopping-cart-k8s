@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/wilddog64/seller-service/internal/telemetry"
 )
 
 var ErrNotFound = errors.New("shop not found")
@@ -20,7 +21,12 @@ type Shop struct {
 type Store struct{ pool *pgxpool.Pool }
 
 func New(ctx context.Context, databaseURL string) (*Store, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	config.ConnConfig.Tracer = telemetry.QueryTracer{}
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}

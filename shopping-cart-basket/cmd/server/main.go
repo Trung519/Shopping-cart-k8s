@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/user/shopping-cart-basket/internal/telemetry"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,6 +26,17 @@ import (
 const version = "1.2.0"
 
 func main() {
+
+	flush, err := telemetry.Init(context.Background())
+	if err != nil {
+		panic("tracing initialization failed")
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = flush(ctx)
+	}()
+
 	// Load configuration
 	cfg := config.Load()
 
@@ -117,7 +129,7 @@ func main() {
 	// Create HTTP server
 	srv := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
-		Handler:      router,
+		Handler:      telemetry.HTTPHandler("basket-service", router),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

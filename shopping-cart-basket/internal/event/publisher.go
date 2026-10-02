@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"net/url"
 	"sync"
 	"time"
@@ -15,8 +20,8 @@ import (
 
 // Publisher publishes cart events to RabbitMQ
 type Publisher struct {
-	exchange string
-	logger   *zap.Logger
+	exchange   string
+	logger     *zap.Logger
 	connection *amqp091.Connection
 	channel    *amqp091.Channel
 	mu         sync.Mutex
@@ -55,6 +60,14 @@ func NewPublisher(exchange, host, port, vhost, username, password string, useTLS
 
 // Publish publishes an event to RabbitMQ
 func (p *Publisher) Publish(ctx context.Context, event *model.EventEnvelope) error {
+	ctx, span := otel.Tracer("shopping/amqp").Start(ctx, event.Type+" publish", trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(attribute.String("messaging.system", "rabbitmq"), attribute.String("messaging.destination.name", p.exchange), attribute.String("messaging.rabbitmq.destination.routing_key", event.Type)))
+	defer span.End()
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	headers := amqp091.Table{}
+	for key, value := range carrier {
+		headers[key] = value
+	}
 	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
@@ -68,15 +81,19 @@ func (p *Publisher) Publish(ctx context.Context, event *model.EventEnvelope) err
 
 	if err := p.channel.PublishWithContext(ctx, p.exchange, event.Type, true, false, amqp091.Publishing{
 		ContentType:  "application/json",
+		Headers:      headers,
 		DeliveryMode: amqp091.Persistent,
 		MessageId:    event.ID,
 		Timestamp:    time.Now().UTC(),
 		Body:         data,
 	}); err != nil {
+		span.SetStatus(codes.Error, "RabbitMQ publish failed")
 		return fmt.Errorf("publish event %q: %w", event.Type, err)
 	}
 
 	p.logger.Info("published event to RabbitMQ",
+		zap.String("trace_id", span.SpanContext().TraceID().String()),
+		zap.String("span_id", span.SpanContext().SpanID().String()),
 		zap.String("eventType", event.Type),
 		zap.String("eventId", event.ID),
 		zap.String("correlationId", event.CorrelationID),

@@ -313,7 +313,7 @@ metrics:
           spanStartTimeShift: -1m
           spanEndTimeShift: 1m
           customQuery: true
-          query: '{job="fluent-bit",kubernetes_namespace_name="shopping-cart-apps"}
+          query: '{job="fluent-bit",kubernetes_namespace_name=~"shopping-cart-(apps|payment|identity|gateway)"}
             |= "${__trace.traceId}"'
         nodeGraph:
           enabled: true

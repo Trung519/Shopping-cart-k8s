@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/wilddog64/commerce-bff/internal/telemetry"
 )
 
 var ErrNotFound = errors.New("session not found")
@@ -35,7 +36,9 @@ type Store struct {
 }
 
 func New(address, password string, db int, ttl time.Duration) *Store {
-	return &Store{client: redis.NewClient(&redis.Options{Addr: address, Password: password, DB: db}), ttl: ttl}
+	client := redis.NewClient(&redis.Options{Addr: address, Password: password, DB: db})
+	client.AddHook(telemetry.RedisHook{})
+	return &Store{client: client, ttl: ttl}
 }
 
 func (s *Store) Ping(ctx context.Context) error { return s.client.Ping(ctx).Err() }

@@ -4,6 +4,8 @@ import json
 import threading
 import time
 
+from opentelemetry import propagate, trace
+from opentelemetry.trace import SpanKind
 import pika
 import structlog
 
@@ -78,7 +80,23 @@ class OrderCreatedConsumer:
                 self._connection = None
                 self._channel = None
 
-    def _handle_message(self, channel, method, _properties, body: bytes) -> None:
+    def _handle_message(self, channel, method, properties, body: bytes) -> None:
+        carrier = {}
+        for key, value in (getattr(properties, "headers", None) or {}).items():
+            if key in ("traceparent", "tracestate"):
+                carrier[key] = value.decode("utf-8") if isinstance(value, bytes) else str(value)
+        with trace.get_tracer(__name__).start_as_current_span(
+            "order.created process", context=propagate.extract(carrier), kind=SpanKind.CONSUMER,
+            attributes={"messaging.system": "rabbitmq", "messaging.destination.name": QUEUE,
+                        "messaging.operation": "process", "messaging.message.redelivered": bool(getattr(method, "redelivered", False))},
+        ) as span:
+            current = span.get_span_context()
+            bound = logger.bind(trace_id=format(current.trace_id, "032x"), span_id=format(current.span_id, "016x"))
+            bound.info("rabbitmq_message_processing", queue=QUEUE)
+            self._process_message(channel, method, properties, body)
+            bound.info("rabbitmq_message_processing_finished", queue=QUEUE)
+
+    def _process_message(self, channel, method, _properties, body: bytes) -> None:
         try:
             event = json.loads(body.decode("utf-8"))
             event_id = str(event["id"])
@@ -108,5 +126,6 @@ class OrderCreatedConsumer:
 
             channel.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as exc:
+            trace.get_current_span().set_status(trace.Status(trace.StatusCode.ERROR, "Order event processing failed"))
             logger.error("order_created_event_failed", error=str(exc))
             channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
