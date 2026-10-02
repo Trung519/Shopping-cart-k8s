@@ -33,7 +33,7 @@ stay in Secrets; the template is managed in Git.
 1. Change this chart and push `dev`.
 2. Refresh `shopping-observability`, inspect Diff, then Sync that Application.
 3. The existing ApplicationSet applies ServerSideApply for this Application;
-   the existing project permits required CRDs, webhook resources, and CoreDNS's
+   with `ClientSideApplyMigration=false` for Argo CD 3.5. The existing project permits required CRDs, webhook resources, and CoreDNS's
    metrics Service in `kube-system`.
 4. Leave automated sync/prune disabled during migration. Review PVC ownership
    before pruning anything; the historical `grafana` PVC is not the migrated
@@ -46,3 +46,5 @@ Prometheus Source displays the triggering query; application error details requi
 
 The three migrated data PVs use Retain. Namespace deletion does not erase them;
 storage disposal must be a separate explicit operation.
+Grafana `persistence.volumeName` is pinned to this lab's existing PV; this binding
+must remain unchanged while adopting the bound PVC with server-side apply.
