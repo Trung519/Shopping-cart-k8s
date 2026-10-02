@@ -80,6 +80,14 @@ spec:
       syncPolicy:
         syncOptions:
           - CreateNamespace=true
+  templatePatch: |
+    {{- if eq .name "shopping-observability" }}
+    spec:
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+    {{- end }}
   syncPolicy:
     # Removed list entries do not automatically delete Applications.
     applicationsSync: create-update

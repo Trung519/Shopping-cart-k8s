@@ -1,0 +1,33 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopmon-shopping-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+{{ .Files.Get "files/alerts-spec.yaml" | indent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopmon-live-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  shopping-live.json: |
+{{ .Files.Get "files/shopping-live.json" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopmon-alert-templates
+  namespace: {{ .Release.Namespace }}
+data:
+  telegram.tmpl: |
+    {{`{{ define "shopping.telegram" }}`}}
+{{ .Files.Get "files/telegram-message.tmpl" | indent 4 }}
+    {{`{{ end }}`}}
+{{- end }}

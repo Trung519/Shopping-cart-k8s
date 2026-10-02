@@ -1,0 +1,11 @@
+<b>{{ .Status | toUpper }} — Shopping Cart</b>
+{{ range .Alerts }}
+<b>{{ .Labels.alertname | html }}</b>
+{{ if .Annotations.summary }}{{ .Annotations.summary | html }}{{ end }}
+{{ if .Annotations.description }}{{ .Annotations.description | html }}{{ end }}
+{{ if .Annotations.observed_value }}Giá trị đo: {{ .Annotations.observed_value | html }}{{ end }}
+{{ if .Annotations.action }}Kiểm tra: {{ .Annotations.action | html }}{{ end }}
+<a href="{{ .GeneratorURL | html }}">Xem điều kiện cảnh báo trong Prometheus</a>
+<a href="http://127.0.0.1:3000/d/shopcart-live">Xem dashboard Shopping Cart</a>
+{{ end }}
+Link dành cho Mac đang chạy port-forward. Cảnh báo TEST chỉ kiểm tra gửi tin, không có sự cố ứng dụng.

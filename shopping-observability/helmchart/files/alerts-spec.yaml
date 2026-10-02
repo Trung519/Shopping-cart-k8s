@@ -1,0 +1,91 @@
+groups:
+- name: shopping.lab
+  rules:
+  - alert: ShoppingMetricsTargetDown
+    expr: up{job=~"istio-envoy|rabbitmq"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Metrics target unavailable: {{ $labels.instance }}'
+      description: Inspect Prometheus Targets and pod/network status. This detects discovered targets; not total disappearance.
+      observed_value: '{{ $value }} (up=0 means scrape failed)'
+      action: "Prometheus Targets \u2192 Last Error; check pod readiness and network."
+  - alert: ShoppingIstioMetricsMissing
+    expr: absent(up{job="istio-envoy"})
+    for: 3m
+    labels:
+      severity: warning
+    annotations:
+      summary: No Istio scrape targets discovered
+      description: No up series exists for job istio-envoy for 3 minutes.
+      action: Check discovery namespace/container/port filters and running Istio proxies.
+  - alert: ShoppingPodNotReady
+    expr: kube_pod_status_ready{namespace=~"shopping-cart-(apps|payment|identity|data|gateway)",condition="true"} == 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Pod not ready: {{ $labels.namespace }}/{{ $labels.pod }}'
+      observed_value: '{{ $value }} (ready=0)'
+      action: Inspect readiness probe, pod events and application logs.
+  - alert: ShoppingPodRestarting
+    expr: increase(kube_pod_container_status_restarts_total{namespace=~"shopping-cart-.*"}[10m]) > 3
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Container repeatedly restarting: {{ $labels.pod }} / {{ $labels.container }}'
+      observed_value: '{{ $value }} restarts in 10 minutes'
+      action: Inspect last termination reason, OOMKilled and previous container logs.
+  - alert: ShoppingHigh5xxRate
+    expr: '(sum by (destination_workload_namespace, destination_workload) (rate(istio_requests_total{reporter="destination",destination_workload_namespace=~"shopping-cart-(apps|payment)",response_code=~"5.."}[5m]))
+
+      / sum by (destination_workload_namespace, destination_workload) (rate(istio_requests_total{reporter="destination",destination_workload_namespace=~"shopping-cart-(apps|payment)"}[5m]))
+      > 0.05)
+
+      and on (destination_workload_namespace, destination_workload)
+
+      (sum by (destination_workload_namespace, destination_workload) (increase(istio_requests_total{reporter="destination",destination_workload_namespace=~"shopping-cart-(apps|payment)"}[5m]))
+      >= 20)
+
+      '
+    for: 3m
+    labels:
+      severity: warning
+    annotations:
+      summary: '5xx rate above 5%: {{ $labels.destination_workload }}'
+      observed_value: '{{ $value }} (ratio; 0.05 = 5%)'
+      description: 5-minute HTTP 5xx ratio above 5% for 3 minutes, with at least 20 requests in 5 minutes.
+      action: Check affected service and dependencies; inspect logs for actual error details.
+  - alert: ShoppingHighP95
+    expr: '(histogram_quantile(0.95, sum by (le, destination_workload_namespace, destination_workload) (rate(istio_request_duration_milliseconds_bucket{reporter="destination",destination_workload_namespace=~"shopping-cart-(apps|payment)"}[5m])))
+      > 1000)
+
+      and on (destination_workload_namespace, destination_workload)
+
+      (sum by (destination_workload_namespace, destination_workload) (increase(istio_requests_total{reporter="destination",destination_workload_namespace=~"shopping-cart-(apps|payment)"}[5m]))
+      >= 20)
+
+      '
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'p95 above 1 second: {{ $labels.destination_workload }}'
+      observed_value: '{{ $value }} milliseconds'
+      description: 5-minute p95 above 1000ms for 5 minutes, with at least 20 requests in 5 minutes.
+      action: Compare latency, traffic, CPU, database and queue metrics. Internal trace details require tracing instrumentation.
+  - alert: MonitoringContainerNearMemoryLimit
+    expr: '(sum by (namespace,pod,container) (container_memory_working_set_bytes{namespace="monitoring",container!="",container!="POD"})
+
+      / on(namespace,pod,container) max by (namespace,pod,container) (kube_pod_container_resource_limits{namespace="monitoring",resource="memory"})
+      > 0.85)
+
+      '
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Monitoring container near memory limit: {{ $labels.pod }}/{{ $labels.container }}'
+      observed_value: '{{ $value }} (ratio; 0.85 = 85%)'
+      action: Compare RAM and configured limits; check active series and queries before increasing limits.

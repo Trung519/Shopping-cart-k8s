@@ -3,12 +3,10 @@ namespace:
   name: shopping-cart-observability
   labels:
     istio-injection: disabled
-
 loki:
-  enabled: true
+  enabled: false
   fullnameOverride: loki
   deploymentMode: SingleBinary
-
   loki:
     auth_enabled: false
     commonConfig:
@@ -18,13 +16,13 @@ loki:
       type: filesystem
     schemaConfig:
       configs:
-        - from: "2024-04-01"
-          store: tsdb
-          object_store: filesystem
-          schema: v13
-          index:
-            prefix: loki_index_
-            period: 24h
+      - from: '2024-04-01'
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
     limits_config:
       retention_period: 48h
       ingestion_rate_mb: 4
@@ -42,7 +40,6 @@ loki:
       overrides:
         fake:
           deletion_mode: filter-and-delete
-
   singleBinary:
     replicas: 1
     nodeSelector:
@@ -52,123 +49,71 @@ loki:
         cpu: 200m
         memory: 512Mi
       limits:
-        cpu: "1"
+        cpu: '1'
         memory: 1Gi
     persistence:
       enabled: true
       storageClass: local-path
       size: 8Gi
     extraContainers:
-      - name: disk-pressure-cleaner
-        image: python:3.13-alpine3.22@sha256:e81548ac35b07a3bd4805f275107592ef458b1e893c0e04d45aedaa19416cca5
-        imagePullPolicy: IfNotPresent
-        command:
-          - python
-          - -c
-          - |
-            import json
-            import os
-            import time
-            import urllib.parse
-            import urllib.request
-
-            loki_url = "http://127.0.0.1:3100"
-            marker = "/var/loki/.disk-pressure-cleaner-last-run"
-            threshold_percent = 90
-            volume_capacity_bytes = 8 * 1024 * 1024 * 1024
-            cleanup_window_seconds = 4 * 60 * 60
-            cooldown_seconds = 4 * 60 * 60
-            poll_seconds = 5 * 60
-
-            def allocated_bytes(path):
-                total = 0
-                for root, directories, files in os.walk(path):
-                    for name in directories + files:
-                        item = os.path.join(root, name)
-                        try:
-                            total += os.lstat(item).st_blocks * 512
-                        except FileNotFoundError:
-                            pass
-                return total
-
-            def oldest_log_timestamp(now_seconds):
-                params = urllib.parse.urlencode({
-                    "query": '{job="fluent-bit"}',
-                    "start": (now_seconds - 72 * 60 * 60) * 1_000_000_000,
-                    "end": now_seconds * 1_000_000_000,
-                    "direction": "forward",
-                    "limit": 1,
-                })
-                with urllib.request.urlopen(
-                    f"{loki_url}/loki/api/v1/query_range?{params}", timeout=30
-                ) as response:
-                    result = json.load(response)["data"]["result"]
-                timestamps = [int(stream["values"][0][0]) for stream in result if stream["values"]]
-                return min(timestamps) // 1_000_000_000 if timestamps else None
-
-            while True:
-                try:
-                    used_bytes = allocated_bytes("/var/loki")
-                    used_percent = int(used_bytes * 100 / volume_capacity_bytes)
-                    now = int(time.time())
-                    last_run = int(open(marker).read().strip()) if os.path.exists(marker) else 0
-                    if used_percent >= threshold_percent and now - last_run >= cooldown_seconds:
-                        oldest = oldest_log_timestamp(now)
-                        if oldest is None:
-                            print("disk pressure detected but Loki returned no logs", flush=True)
-                        else:
-                            params = urllib.parse.urlencode({
-                                "query": '{job="fluent-bit"}',
-                                "start": oldest,
-                                "end": oldest + cleanup_window_seconds,
-                                "max_interval": "4h",
-                            })
-                            request = urllib.request.Request(
-                                f"{loki_url}/loki/api/v1/delete?{params}",
-                                data=b"",
-                                method="POST",
-                            )
-                            with urllib.request.urlopen(request, timeout=30) as response:
-                                if response.status != 204:
-                                    raise RuntimeError(f"unexpected delete status {response.status}")
-                            with open(marker, "w", encoding="ascii") as handle:
-                                handle.write(f"{now}\n")
-                            print(
-                                f"disk usage {used_percent}%: requested deletion "
-                                f"from {oldest} to {oldest + cleanup_window_seconds}",
-                                flush=True,
-                            )
-                except Exception as error:
-                    print(f"disk pressure check failed: {error}", flush=True)
-                time.sleep(poll_seconds)
-        resources:
-          requests:
-            cpu: 10m
-            memory: 32Mi
-          limits:
-            cpu: 100m
-            memory: 96Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 10001
-          seccompProfile:
-            type: RuntimeDefault
-        volumeMounts:
-          - name: storage
-            mountPath: /var/loki
-
+    - name: disk-pressure-cleaner
+      image: python:3.13-alpine3.22@sha256:e81548ac35b07a3bd4805f275107592ef458b1e893c0e04d45aedaa19416cca5
+      imagePullPolicy: IfNotPresent
+      command:
+      - python
+      - -c
+      - "import json\nimport os\nimport time\nimport urllib.parse\nimport urllib.request\n\nloki_url = \"http://127.0.0.1:3100\"\
+        \nmarker = \"/var/loki/.disk-pressure-cleaner-last-run\"\nthreshold_percent = 90\nvolume_capacity_bytes = 8 * 1024\
+        \ * 1024 * 1024\ncleanup_window_seconds = 4 * 60 * 60\ncooldown_seconds = 4 * 60 * 60\npoll_seconds = 5 * 60\n\ndef\
+        \ allocated_bytes(path):\n    total = 0\n    for root, directories, files in os.walk(path):\n        for name in directories\
+        \ + files:\n            item = os.path.join(root, name)\n            try:\n                total += os.lstat(item).st_blocks\
+        \ * 512\n            except FileNotFoundError:\n                pass\n    return total\n\ndef oldest_log_timestamp(now_seconds):\n\
+        \    params = urllib.parse.urlencode({\n        \"query\": '{job=\"fluent-bit\"}',\n        \"start\": (now_seconds\
+        \ - 72 * 60 * 60) * 1_000_000_000,\n        \"end\": now_seconds * 1_000_000_000,\n        \"direction\": \"forward\"\
+        ,\n        \"limit\": 1,\n    })\n    with urllib.request.urlopen(\n        f\"{loki_url}/loki/api/v1/query_range?{params}\"\
+        , timeout=30\n    ) as response:\n        result = json.load(response)[\"data\"][\"result\"]\n    timestamps = [int(stream[\"\
+        values\"][0][0]) for stream in result if stream[\"values\"]]\n    return min(timestamps) // 1_000_000_000 if timestamps\
+        \ else None\n\nwhile True:\n    try:\n        used_bytes = allocated_bytes(\"/var/loki\")\n        used_percent =\
+        \ int(used_bytes * 100 / volume_capacity_bytes)\n        now = int(time.time())\n        last_run = int(open(marker).read().strip())\
+        \ if os.path.exists(marker) else 0\n        if used_percent >= threshold_percent and now - last_run >= cooldown_seconds:\n\
+        \            oldest = oldest_log_timestamp(now)\n            if oldest is None:\n                print(\"disk pressure\
+        \ detected but Loki returned no logs\", flush=True)\n            else:\n                params = urllib.parse.urlencode({\n\
+        \                    \"query\": '{job=\"fluent-bit\"}',\n                    \"start\": oldest,\n                \
+        \    \"end\": oldest + cleanup_window_seconds,\n                    \"max_interval\": \"4h\",\n                })\n\
+        \                request = urllib.request.Request(\n                    f\"{loki_url}/loki/api/v1/delete?{params}\"\
+        ,\n                    data=b\"\",\n                    method=\"POST\",\n                )\n                with\
+        \ urllib.request.urlopen(request, timeout=30) as response:\n                    if response.status != 204:\n     \
+        \                   raise RuntimeError(f\"unexpected delete status {response.status}\")\n                with open(marker,\
+        \ \"w\", encoding=\"ascii\") as handle:\n                    handle.write(f\"{now}\\n\")\n                print(\n\
+        \                    f\"disk usage {used_percent}%: requested deletion \"\n                    f\"from {oldest} to\
+        \ {oldest + cleanup_window_seconds}\",\n                    flush=True,\n                )\n    except Exception as\
+        \ error:\n        print(f\"disk pressure check failed: {error}\", flush=True)\n    time.sleep(poll_seconds)\n"
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 96Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      volumeMounts:
+      - name: storage
+        mountPath: /var/loki
   read:
     replicas: 0
   write:
     replicas: 0
   backend:
     replicas: 0
-
   chunksCache:
     enabled: false
   resultsCache:
@@ -190,21 +135,16 @@ loki:
         memory: 128Mi
   minio:
     enabled: false
-
 grafana:
-  enabled: true
+  enabled: false
   fullnameOverride: grafana
   replicas: 1
-
   admin:
     existingSecret: grafana-admin
-
   initChownData:
     enabled: false
-
   testFramework:
     enabled: false
-
   adminUser: admin
   resources:
     requests:
@@ -213,42 +153,34 @@ grafana:
     limits:
       cpu: 500m
       memory: 512Mi
-
   persistence:
     enabled: true
     storageClassName: local-path
     size: 2Gi
-
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
-        - name: Loki
-          type: loki
-          access: proxy
-          url: http://loki-gateway
-          isDefault: true
-
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway
+        isDefault: true
 fluent-bit:
-  enabled: true
+  enabled: false
   fullnameOverride: fluent-bit
   kind: DaemonSet
-
   tolerations:
-    - operator: Exists
-
+  - operator: Exists
   testFramework:
     enabled: false
-
   daemonSetVolumes:
-    - name: varlog
-      hostPath:
-        path: /var/log
-
+  - name: varlog
+    hostPath:
+      path: /var/log
   daemonSetVolumeMounts:
-    - name: varlog
-      mountPath: /var/log
-
+  - name: varlog
+    mountPath: /var/log
   resources:
     requests:
       cpu: 50m
@@ -256,39 +188,164 @@ fluent-bit:
     limits:
       cpu: 200m
       memory: 128Mi
-
   config:
-    inputs: |
-      [INPUT]
-          Name tail
-          Path /var/log/containers/*.log
-          multiline.parser docker, cri
-          Tag kube.*
-          DB /var/log/flb_kube_all.db
-          DB.Sync Normal
-          Read_from_Head On
-          Mem_Buf_Limit 5MB
-          Skip_Long_Lines On
-
-    filters: |
-      [FILTER]
-          Name kubernetes
-          Match kube.*
-          Merge_Log On
-          Keep_Log Off
-          K8S-Logging.Parser On
-          K8S-Logging.Exclude Off
-          Labels Off
-          Annotations Off
-
-    outputs: |
-      [OUTPUT]
-          Name loki
-          Match kube.*
-          Host loki-gateway
-          Port 80
-          Labels job=fluent-bit,cluster=lab-k8s
-          Label_Keys $kubernetes['namespace_name'],$kubernetes['pod_name'],$kubernetes['container_name'],$kubernetes['host']
-          Auto_Kubernetes_Labels Off
-          Line_Format json
-          Retry_Limit False
+    inputs: "[INPUT]\n    Name tail\n    Path /var/log/containers/*.log\n    multiline.parser docker, cri\n    Tag kube.*\n\
+      \    DB /var/log/flb_kube_all.db\n    DB.Sync Normal\n    Read_from_Head On\n    Mem_Buf_Limit 5MB\n    Skip_Long_Lines\
+      \ On\n"
+    filters: "[FILTER]\n    Name kubernetes\n    Match kube.*\n    Merge_Log On\n    Keep_Log Off\n    K8S-Logging.Parser\
+      \ On\n    K8S-Logging.Exclude Off\n    Labels Off\n    Annotations Off\n"
+    outputs: "[OUTPUT]\n    Name loki\n    Match kube.*\n    Host loki-gateway\n    Port 80\n    Labels job=fluent-bit,cluster=lab-k8s\n\
+      \    Label_Keys $kubernetes['namespace_name'],$kubernetes['pod_name'],$kubernetes['container_name'],$kubernetes['host']\n\
+      \    Auto_Kubernetes_Labels Off\n    Line_Format json\n    Retry_Limit False\n"
+metrics:
+  fullnameOverride: shopmon
+  defaultRules:
+    create: false
+  kubeEtcd:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 384Mi
+    prometheusConfigReloader:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+  grafana:
+    admin:
+      existingSecret: shopmon-grafana-admin
+      userKey: admin-user
+      passwordKey: admin-password
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 2Gi
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: shopping-cart-observability
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+  prometheus:
+    prometheusSpec:
+      externalUrl: http://127.0.0.1:9090
+      routePrefix: /
+      replicas: 1
+      retention: 3d
+      retentionSize: 3GB
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1536Mi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+      additionalScrapeConfigs:
+      - job_name: istio-envoy
+        metrics_path: /stats/prometheus
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels:
+          - __meta_kubernetes_namespace
+          action: keep
+          regex: shopping-cart-(apps|payment|identity|gateway)
+        - source_labels:
+          - __meta_kubernetes_pod_phase
+          action: keep
+          regex: Running
+        - source_labels:
+          - __meta_kubernetes_pod_container_name
+          - __meta_kubernetes_pod_container_port_number
+          action: keep
+          regex: istio-proxy;15090
+        - source_labels:
+          - __meta_kubernetes_namespace
+          target_label: namespace
+        - source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: pod
+        metric_relabel_configs:
+        - source_labels:
+          - __name__
+          action: keep
+          regex: istio_.*|envoy_server_live|envoy_server_memory_allocated
+      - job_name: rabbitmq
+        static_configs:
+        - targets:
+          - rabbitmq-headless.shopping-cart-data.svc.cluster.local:15692
+          labels:
+            namespace: shopping-cart-data
+  alertmanager:
+    alertmanagerSpec:
+      useExistingSecret: true
+      configSecret: shopmon-alertmanager-config
+      replicas: 1
+      secrets:
+      - shopmon-telegram
+      resources:
+        requests:
+          cpu: 25m
+          memory: 64Mi
+        limits:
+          memory: 256Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+      configMaps:
+      - shopmon-alert-templates
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+  prometheus-node-exporter:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+    hostRootFsMount:
+      enabled: false
+  enabled: true
