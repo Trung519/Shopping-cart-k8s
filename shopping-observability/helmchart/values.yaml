@@ -248,6 +248,7 @@ metrics:
           memory: 32Mi
         limits:
           memory: 128Mi
+    fullnameOverride: shopmon-grafana
   prometheus:
     prometheusSpec:
       externalUrl: http://127.0.0.1:9090
