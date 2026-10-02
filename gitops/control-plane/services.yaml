@@ -87,7 +87,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
-          - DisableClientSideApplyMigration=true
+          - ClientSideApplyMigration=false
     {{- end }}
   syncPolicy:
     # Removed list entries do not automatically delete Applications.
