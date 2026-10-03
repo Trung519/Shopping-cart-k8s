@@ -12,7 +12,7 @@ from .database import engine, init_db
 from .order_consumer import OrderCreatedConsumer
 from .routers import health, products
 from .security import setup_security
-from .telemetry import instrument
+from .telemetry import configure_access_logging, instrument
 
 # Configure structured logging
 structlog.configure(
@@ -39,6 +39,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
+    # Uvicorn config can reset handlers after the module is imported by its CLI.
+    # Configure again at startup, after server logging config has been applied.
+    configure_access_logging()
     logger.info("starting_application", environment=settings.environment)
 
     # Initialize database

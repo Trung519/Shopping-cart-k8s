@@ -193,3 +193,10 @@ Acceptance creates dedicated test records and performs legitimate admin flow; re
 - grafana-full-trace.jpg: actual Grafana waterfall screenshot, not a mock dashboard.
 - Central command/session logs: Agent_setup/Log_agents/command_logs_20261002_174737.log and session_logs_20261002_174737.log. Historical plan corrections and failed command diagnostics are retained there.
 
+
+
+## Access-log correlation correction (2026-10-03)
+
+Status: executing. User inspection exposed a coverage gap: Uvicorn default product-detail access log contains product UUID but no trace ID; normalized completion logs contain trace ID but not UUID. Prior full tracing acceptance did not verify correlation on this exact log type.
+
+Plan: (1) add context filter and allowlisted JSON formatter to uvicorn.access; retain method/path/status, strip query/client/header/body; (2) real Uvicorn included-router concurrent-request regression checks span-ID existence/context isolation/privacy; (3) build immutable catalog v1.4.8-access-trace-20261003, import all3 ARM64 nodes, update existing chart/local values; (4) push Git then selectively sync product-catalog only and verify new pod+native proxy readiness; (5) actual GET product UUID→same access-log line with trace ID→Tempo HTTP+SQL spans and Grafana derived-link match; (6) update final evidence/results and commit docs. Existing logs are historical and cannot be retroactively changed. No auth/data/namespace or other-service changes. All commands central session20261002_174737.
