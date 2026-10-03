@@ -1,0 +1,29 @@
+{
+  "request": "public GET product detail through existing Gateway; real application, read-only",
+  "trace_id": "2e6c0a889a15447ca300357ed01d2c87",
+  "http_status": 200,
+  "access_log": {
+    "span_id": "103a8a830db09ea3",
+    "level": "info",
+    "event": "http_access",
+    "path": "/api/products/386d7692-9f8e-49d9-a842-43404cf083a6",
+    "trace_id": "2e6c0a889a15447ca300357ed01d2c87",
+    "method": "GET",
+    "service": "product-catalog",
+    "status": 200
+  },
+  "span_count": 12,
+  "services": [
+    "commerce-bff",
+    "commerce-bff.shopping-cart-apps",
+    "nginx-gateway-istio.shopping-cart-gateway",
+    "product-catalog",
+    "product-catalog.shopping-cart-apps"
+  ],
+  "access_span_id_verified": true,
+  "postgresql_span_verified": true,
+  "query_removed": true,
+  "grafana_derived_trace_link_verified": true,
+  "loki_query": "{job=\"fluent-bit\",kubernetes_namespace_name=\"shopping-cart-apps\",kubernetes_container_name=\"product-catalog\"} |= \"386d7692-9f8e-49d9-a842-43404cf083a6\" |= \"2e6c0a889a15447ca300357ed01d2c87\"",
+  "image": "shopping-cart-product-catalog:v1.4.8-access-trace-20261003"
+}

@@ -200,3 +200,22 @@ Acceptance creates dedicated test records and performs legitimate admin flow; re
 Status: executing. User inspection exposed a coverage gap: Uvicorn default product-detail access log contains product UUID but no trace ID; normalized completion logs contain trace ID but not UUID. Prior full tracing acceptance did not verify correlation on this exact log type.
 
 Plan: (1) add context filter and allowlisted JSON formatter to uvicorn.access; retain method/path/status, strip query/client/header/body; (2) real Uvicorn included-router concurrent-request regression checks span-ID existence/context isolation/privacy; (3) build immutable catalog v1.4.8-access-trace-20261003, import all3 ARM64 nodes, update existing chart/local values; (4) push Git then selectively sync product-catalog only and verify new pod+native proxy readiness; (5) actual GET product UUID→same access-log line with trace ID→Tempo HTTP+SQL spans and Grafana derived-link match; (6) update final evidence/results and commit docs. Existing logs are historical and cannot be retroactively changed. No auth/data/namespace or other-service changes. All commands central session20261002_174737.
+
+
+### Access-log correction acceptance result
+
+Status: completed. Code/config commit1116e93 pushed to existing dev; catalog v1.4.8-access-trace-20261003 available as ARM64 on all3 nodes. Existing product-catalog Argo selected-resource operationSucceeded; new pod and native Istio proxyReady, restarts0. Aggregate app Degraded remains the existing ExternalSecret issue.
+
+Real Uvicorn test passed8 concurrent included-router requests with separate propagated trace IDs; each logged span ID exists in exported trace. Startup-order regression uses default Uvicorn logging config and app lifespan reconfiguration to prevent handler reset. Allowlisted JSON access record includes event/service/level/method/path/status/trace_id/span_id; query strings, client IP, headers/cookies/body omitted. Excluded health/ready requests have no fake trace IDs.
+
+Actual read-only public GET through Gateway on07:59:53 returned200. New access log contains the requested product UUID and trace2e6c0a889a15447ca300357ed01d2c87;12 spans include gateway/BFF/catalog/PostgreSQL. Logged span103a8a830db09ea3 exists in that exact trace. Query probe parameter removed. Existing Grafana Loki derived-field regex matches this exact line; actual UI showed TraceID100% and the same trace_id/span_id. Fluent Bit Merge_Log flattens JSON and adds metadata; acceptance harness initially rejected these enrichment fields, corrected only harness allowlist and reran successfully.
+
+Saved filtered proof: catalog-access-correlation-evidence.json. Central command/session logs retain tests/build/import/sync and verification. Screenshot persistence was blocked by browser session ownership errors after visible UI verification; no screenshot claimed. Historical access logs cannot gain trace IDs retroactively. X-Trace-Id response headers are outside this correction; browser Network still does not receive that header. Other runtimes/loggers were not changed.
+
+To verify on Grafana Loki, set Last15minutes (or the appropriate interval) and use:
+
+```logql
+{job="fluent-bit", kubernetes_namespace_name="shopping-cart-apps", kubernetes_container_name="product-catalog"} |= "386d7692-9f8e-49d9-a842-43404cf083a6"
+```
+
+Open a new http_access line, read trace_id and use its Tempo derived link. For isolated acceptance proof add |= "2e6c0a889a15447ca300357ed01d2c87". Repeat real GET after deployment to inspect new logs rather than pre-change lines. Reproduce code test via logged docker run mounting tests/unit/test_access_trace.py into the immutable image. Reproduce live verification via Artifacts/shopping-metrics-plan/verify-catalog-access-correlation.py; it reads a public product and captures no response body/credentials.

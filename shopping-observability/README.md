@@ -42,3 +42,6 @@ Credentials remain in existing Kubernetes Secrets; do not print them into execut
 ## Full-system tracing acceptance
 
 Full request instrumentation for8 SDK services and namespace Istio tracing is implemented.30 real requests/666 verified spans include checkout, order confirmation, JDBC/Redis and exact RabbitMQ producer→consumer propagation. [Final execution plan](docs/PLAN_FULL_SYSTEM_TRACING.md) records corrections, selective existing-Argo operations, evidence and explicit limits. Observability remains in shopping-cart-observability; the existing Istio mesh merge and additive order-status SQL migration are explicit prerequisites.
+
+
+Catalog access-log correlation correction: deployed v1.4.8-access-trace-20261003; product UUID access lines now carry active trace/span IDs. See final plan correction section and catalog-access-correlation-evidence.json for actual GET200→12-span SQL trace acceptance. Historical logs remain unchanged.
