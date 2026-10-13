@@ -71,7 +71,7 @@ export default function OrderDetailPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Đơn #{order.id.slice(0, 8)}</h1>
-          <p className="text-gray-500">Đặt lúc {formatDateTime(order.createdAt)}</p>
+          <p className="text-muted">Đặt lúc {formatDateTime(order.createdAt)}</p>
         </div>
         <Badge variant={statusVariants[order.status]} className="self-start text-sm">
           {statusLabels[order.status]}
@@ -91,10 +91,10 @@ export default function OrderDetailPage() {
               <div className="divide-y">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
-                    <div className="h-16 w-16 flex-shrink-0 rounded-md bg-gray-100" />
+                    <div className="h-16 w-16 flex-shrink-0 rounded-md bg-slate-100" />
                     <div className="flex-1">
                       <h3 className="font-medium">{item.name}</h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted">
                         {formatCurrency(item.unitPrice, order.currency)} x {item.quantity}
                       </p>
                     </div>
@@ -115,11 +115,11 @@ export default function OrderDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-gray-600">Tiền hàng</span>
+                <span className="text-slate-600">Tiền hàng</span>
                 <span>{formatCurrency(order.totalAmount, order.currency)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Phí vận chuyển</span>
+                <span className="text-slate-600">Phí vận chuyển</span>
                 <span>Miễn phí</span>
               </div>
               <hr />
@@ -136,7 +136,7 @@ export default function OrderDetailPage() {
                 <CardTitle>Địa chỉ nhận hàng</CardTitle>
               </CardHeader>
               <CardContent>
-                <address className="not-italic text-gray-600">
+                <address className="not-italic text-slate-600">
                   {order.shippingAddress.street}
                   <br />
                   {order.shippingAddress.city}, {order.shippingAddress.state}{' '}

@@ -7,7 +7,7 @@ export default function NotFoundPage() {
     <div className="market-container flex min-h-[60vh] flex-col items-center justify-center py-16 text-center">
       <span className="rounded-full bg-primary-50 px-5 py-2 text-sm font-extrabold text-primary-600">404</span>
       <h2 className="mt-5 text-2xl font-extrabold">Không tìm thấy trang</h2>
-      <p className="mt-2 max-w-md text-slate-500">
+      <p className="mt-2 max-w-md text-muted">
         Trang bạn tìm kiếm không tồn tại hoặc đã được di chuyển.
       </p>
       <Link to="/" className="mt-8">

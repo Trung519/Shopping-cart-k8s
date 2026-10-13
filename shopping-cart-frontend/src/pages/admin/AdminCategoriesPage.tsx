@@ -28,7 +28,7 @@ export default function AdminCategoriesPage() {
       <header>
         <p className="text-sm font-semibold text-primary-600">Catalog</p>
         <h1 className="mt-1 text-2xl font-black text-ink">Quản lý danh mục</h1>
-        <p className="mt-1 text-sm text-gray-500">Danh mục ở đây là nguồn lựa chọn duy nhất khi đăng sản phẩm.</p>
+        <p className="mt-1 text-sm text-muted">Danh mục ở đây là nguồn lựa chọn duy nhất khi đăng sản phẩm.</p>
       </header>
 
       <form onSubmit={create} className="grid gap-3 border-y bg-white py-4 sm:grid-cols-[1fr_1.4fr_auto]">
@@ -40,15 +40,15 @@ export default function AdminCategoriesPage() {
 
       <div className="overflow-x-auto border-y bg-white">
         <table className="w-full min-w-[680px] text-left text-sm">
-          <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-4 py-3">Tên</th><th className="px-4 py-3">Slug</th><th className="px-4 py-3">Thứ tự</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3 text-right">Thao tác</th></tr></thead>
+          <thead className="border-b bg-ground text-xs uppercase text-muted"><tr><th className="px-4 py-3">Tên</th><th className="px-4 py-3">Slug</th><th className="px-4 py-3">Thứ tự</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3 text-right">Thao tác</th></tr></thead>
           <tbody>{categories.data?.map((category) => (
             <tr key={category.id} className="border-b last:border-0">
               <td className="px-4 py-3 font-semibold text-ink">{category.name}</td>
-              <td className="px-4 py-3 font-mono text-xs text-gray-500">{category.slug}</td>
+              <td className="px-4 py-3 font-mono text-xs text-muted">{category.slug}</td>
               <td className="px-4 py-3">{category.sortOrder}</td>
-              <td className="px-4 py-3"><span className={category.isActive ? 'text-emerald-700' : 'text-gray-400'}>{category.isActive ? 'Đang dùng' : 'Đã ẩn'}</span></td>
+              <td className="px-4 py-3"><span className={category.isActive ? 'text-emerald-700' : 'text-muted'}>{category.isActive ? 'Đang dùng' : 'Đã ẩn'}</span></td>
               <td className="px-4 py-3"><div className="flex justify-end gap-2">
-                <button type="button" title={category.isActive ? 'Ẩn danh mục' : 'Bật danh mục'} onClick={() => mutations.update.mutate({ id: category.id, input: { isActive: !category.isActive } })} className="focus-ring flex h-9 w-9 items-center justify-center rounded-md border hover:bg-gray-50"><Power className="h-4 w-4" /></button>
+                <button type="button" title={category.isActive ? 'Ẩn danh mục' : 'Bật danh mục'} onClick={() => mutations.update.mutate({ id: category.id, input: { isActive: !category.isActive } })} className="focus-ring flex h-9 w-9 items-center justify-center rounded-md border hover:bg-ground"><Power className="h-4 w-4" /></button>
                 <button type="button" title="Xóa danh mục" onClick={() => mutations.remove.mutate(category.id, { onError: (requestError) => setError(requestError instanceof Error ? requestError.message : 'Danh mục đang được sử dụng') })} className="focus-ring flex h-9 w-9 items-center justify-center rounded-md border text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
               </div></td>
             </tr>

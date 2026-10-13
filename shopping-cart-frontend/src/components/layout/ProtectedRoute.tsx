@@ -39,7 +39,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
       return (
         <div className="flex h-64 flex-col items-center justify-center gap-4">
           <h2 className="text-xl font-semibold text-ink">Bạn không có quyền truy cập</h2>
-          <p className="text-gray-600">Tài khoản hiện tại chưa được cấp vai trò phù hợp.</p>
+          <p className="text-slate-600">Tài khoản hiện tại chưa được cấp vai trò phù hợp.</p>
         </div>
       )
     }

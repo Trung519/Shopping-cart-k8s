@@ -39,10 +39,10 @@ const labels = { buyer: 'Trung tâm người mua', seller: 'Kênh người bán'
 export default function WorkspaceLayout({ kind }: { kind: WorkspaceKind }) {
   return (
     <div className="market-container py-7 sm:py-10">
-      <div className="mb-5 flex items-center gap-2 text-sm text-slate-500"><span>ShopCart</span><ChevronRight className="h-4 w-4" /><span className="font-medium text-ink">{labels[kind]}</span></div>
+      <div className="mb-5 flex items-center gap-2 text-sm text-muted"><span>ShopCart</span><ChevronRight className="h-4 w-4" /><span className="font-medium text-ink">{labels[kind]}</span></div>
       <div className="grid min-h-[620px] gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="overflow-x-auto rounded-card border border-slate-200 bg-white p-3 shadow-soft lg:sticky lg:top-28 lg:h-fit"><div className="mb-4 hidden rounded-xl bg-primary-50 px-3 py-3 lg:block"><p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">Workspace</p><p className="mt-1 text-sm font-extrabold text-ink">{labels[kind]}</p></div><nav className="flex gap-1.5 lg:flex-col" aria-label={labels[kind]}>{navigation[kind].map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `focus-ring flex min-h-11 flex-none items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${isActive ? 'bg-primary-600 text-white shadow-soft' : 'text-slate-600 hover:bg-slate-100 hover:text-ink'}`}><Icon className="h-4 w-4 flex-none" /><span className="whitespace-nowrap">{label}</span></NavLink>)}</nav></aside>
-        <main className="min-w-0 rounded-card border border-slate-200 bg-white p-4 shadow-soft sm:p-6 xl:p-8"><Outlet /></main>
+        <aside className="overflow-x-auto rounded-card border border-line bg-white p-3 shadow-soft lg:sticky lg:top-28 lg:h-fit"><div className="mb-4 hidden rounded-xl bg-primary-50 px-3 py-3 lg:block"><p className="text-xs font-bold uppercase tracking-[0.12em] text-primary-600">Workspace</p><p className="mt-1 text-sm font-extrabold text-ink">{labels[kind]}</p></div><nav className="flex gap-1.5 lg:flex-col" aria-label={labels[kind]}>{navigation[kind].map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `focus-ring flex min-h-11 flex-none items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${isActive ? 'bg-primary-600 text-white shadow-soft' : 'text-slate-600 hover:bg-slate-100 hover:text-ink'}`}><Icon className="h-4 w-4 flex-none" /><span className="whitespace-nowrap">{label}</span></NavLink>)}</nav></aside>
+        <main className="min-w-0 rounded-card border border-line bg-white p-4 shadow-soft sm:p-6 xl:p-8"><Outlet /></main>
       </div>
     </div>
   )

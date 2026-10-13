@@ -51,9 +51,9 @@ export default function OrdersPage() {
   if (!data || data.data.length === 0) {
     return (
       <div className="market-container flex flex-col items-center justify-center py-16">
-        <Package className="h-16 w-16 text-gray-300" />
+        <Package className="h-16 w-16 text-slate-300" />
         <h2 className="mt-4 text-xl font-semibold">Bạn chưa có đơn hàng</h2>
-        <p className="mt-2 text-gray-500">Đơn đã đặt sẽ xuất hiện tại đây.</p>
+        <p className="mt-2 text-muted">Đơn đã đặt sẽ xuất hiện tại đây.</p>
         <Link to="/products" className="mt-6">
           <span className="text-primary-600 hover:underline">Khám phá sản phẩm</span>
         </Link>
@@ -89,15 +89,15 @@ function OrderCard({ order }: { order: Order }) {
                 <h3 className="font-semibold">Đơn #{order.id.slice(0, 8)}</h3>
                 <Badge variant={statusVariants[order.status]}>{statusLabels[order.status]}</Badge>
               </div>
-              <p className="mt-1 text-sm text-gray-500">Đặt ngày {formatDate(order.createdAt)}</p>
+              <p className="mt-1 text-sm text-muted">Đặt ngày {formatDate(order.createdAt)}</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold">
                 {formatCurrency(order.totalAmount, order.currency)}
               </p>
-              <p className="text-sm text-gray-500">{order.items.length} sản phẩm</p>
+              <p className="text-sm text-muted">{order.items.length} sản phẩm</p>
             </div>
-            <ChevronRight className="hidden h-5 w-5 text-gray-400 sm:block" />
+            <ChevronRight className="hidden h-5 w-5 text-muted sm:block" />
           </div>
         </CardContent>
       </Card>

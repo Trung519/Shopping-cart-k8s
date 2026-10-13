@@ -74,7 +74,7 @@ export default function AdminOrdersPage() {
         <div>
           <p className="text-sm font-bold uppercase text-primary-600">Order operations</p>
           <h1 className="mt-2 text-2xl font-black">Vận hành đơn hàng</h1>
-          <p className="mt-1 text-sm text-gray-500">Theo dõi thanh toán mock, xử lý và giao hàng.</p>
+          <p className="mt-1 text-sm text-muted">Theo dõi thanh toán mock, xử lý và giao hàng.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => orders.refetch()} disabled={orders.isFetching}>
           <RefreshCw className="mr-2 h-4 w-4" /> Làm mới
@@ -87,7 +87,7 @@ export default function AdminOrdersPage() {
             key={filter.label}
             type="button"
             onClick={() => setStatus(filter.value)}
-            className={`h-9 shrink-0 rounded-md px-3 text-sm font-semibold ${status === filter.value ? 'bg-ink text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`h-9 shrink-0 rounded-md px-3 text-sm font-semibold ${status === filter.value ? 'bg-ink text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             {filter.label}
           </button>
@@ -100,11 +100,11 @@ export default function AdminOrdersPage() {
       ) : orders.isError ? (
         <div className="border-b py-12 text-center text-sm text-red-600">Không tải được danh sách đơn hàng.</div>
       ) : !orders.data?.length ? (
-        <div className="border-b py-12 text-center text-sm text-gray-500">Không có đơn ở trạng thái này.</div>
+        <div className="border-b py-12 text-center text-sm text-muted">Không có đơn ở trạng thái này.</div>
       ) : (
         <div className="overflow-x-auto border-b">
           <table className="w-full min-w-[920px] text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+            <thead className="bg-ground text-xs uppercase text-muted">
               <tr><th className="px-4 py-3">Đơn hàng</th><th className="px-4 py-3">Khách hàng</th><th className="px-4 py-3">Sản phẩm</th><th className="px-4 py-3">Tổng tiền</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3 text-right">Thao tác</th></tr>
             </thead>
             <tbody className="divide-y">
@@ -112,14 +112,14 @@ export default function AdminOrdersPage() {
                 const action = nextAction(order)
                 const Icon = action?.icon
                 return (
-                  <tr key={order.id} className="bg-white align-middle hover:bg-gray-50">
-                    <td className="px-4 py-4"><p className="font-bold">#{order.id.slice(0, 8)}</p><p className="mt-1 text-xs text-gray-500">{formatDate(order.createdAt)}</p></td>
+                  <tr key={order.id} className="bg-white align-middle hover:bg-ground">
+                    <td className="px-4 py-4"><p className="font-bold">#{order.id.slice(0, 8)}</p><p className="mt-1 text-xs text-muted">{formatDate(order.createdAt)}</p></td>
                     <td className="px-4 py-4 font-mono text-xs">{order.customerId.slice(0, 12)}...</td>
                     <td className="px-4 py-4">{order.items.length} dòng / {order.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm</td>
                     <td className="px-4 py-4 font-bold">{formatCurrency(order.totalAmount, order.currency)}</td>
-                    <td className="px-4 py-4"><span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold">{statusLabels[order.status] ?? order.status}</span></td>
+                    <td className="px-4 py-4"><span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold">{statusLabels[order.status] ?? order.status}</span></td>
                     <td className="px-4 py-4 text-right">
-                      {action && Icon ? <Button size="sm" onClick={() => advance(order)} loading={updateStatus.isPending}><Icon className="mr-2 h-4 w-4" />{action.label}</Button> : <span className="text-xs text-gray-400">Không còn thao tác</span>}
+                      {action && Icon ? <Button size="sm" onClick={() => advance(order)} loading={updateStatus.isPending}><Icon className="mr-2 h-4 w-4" />{action.label}</Button> : <span className="text-xs text-muted">Không còn thao tác</span>}
                     </td>
                   </tr>
                 )

@@ -36,10 +36,10 @@ export default function LoginPage() {
           Phiên đăng nhập được bảo vệ và phân quyền theo vai trò
         </div>
       </div>
-      <Card className="border-slate-200 p-2 shadow-lift">
+      <Card className="border-line p-2 shadow-lift">
         <CardHeader>
           <CardTitle className="text-2xl font-extrabold text-ink">Đăng nhập ShopCart</CardTitle>
-          <p className="text-sm text-slate-500">Tiếp tục để mua sắm và quản lý hoạt động của bạn.</p>
+          <p className="text-sm text-muted">Tiếp tục để mua sắm và quản lý hoạt động của bạn.</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -49,7 +49,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+          <div className="mt-4 rounded-xl border border-line bg-ground p-4 text-sm leading-6 text-slate-600">
             Bạn sẽ được chuyển tới cổng đăng nhập bảo mật. ShopCart không lưu token đăng nhập trong trình duyệt.
           </div>
         </CardContent>

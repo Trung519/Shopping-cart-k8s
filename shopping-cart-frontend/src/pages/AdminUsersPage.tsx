@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Quản lý người dùng</h1>
-          <p className="text-sm text-gray-500">Cấp quyền theo vai trò và quản lý quyền truy cập nền tảng.</p>
+          <p className="text-sm text-muted">Cấp quyền theo vai trò và quản lý quyền truy cập nền tảng.</p>
         </div>
         <Button onClick={startCreate}>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -175,31 +175,31 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {sortedUsers.length === 0 && (
-              <p className="text-sm text-gray-500">Chưa có người dùng.</p>
+              <p className="text-sm text-muted">Chưa có người dùng.</p>
             )}
 
             {sortedUsers.map((user) => (
               <div
                 key={user.id}
-                className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-3 rounded-lg border border-line p-4 md:flex-row md:items-center md:justify-between"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900">{user.name}</p>
+                    <p className="font-semibold text-slate-900">{user.name}</p>
                     {user.id === auth.user?.id && (
                       <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
                         Bạn
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">@{user.username}</p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                  <p className="text-sm text-gray-500">Quốc gia: {countryLabel(user.countryId || 'VN')} ({user.countryId || 'VN'})</p>
+                  <p className="text-sm text-slate-600">@{user.username}</p>
+                  <p className="text-sm text-muted">{user.email}</p>
+                  <p className="text-sm text-muted">Quốc gia: {countryLabel(user.countryId || 'VN')} ({user.countryId || 'VN'})</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {user.roles.map((role) => (
                       <span
                         key={role}
-                        className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                        className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
                       >
                         {role}
                       </span>
@@ -232,7 +232,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <label className="block space-y-2 text-sm font-medium text-gray-700">
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
                 <span>Tên đăng nhập</span>
                 <Input
                   value={form.username}
@@ -240,8 +240,8 @@ export default function AdminUsersPage() {
                   required
                 />
               </label>
-              <label className="block space-y-2 text-sm font-medium text-gray-700">
-                <span>Mật khẩu {isEditing && <span className="text-gray-400">(để trống nếu không đổi)</span>}</span>
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
+                <span>Mật khẩu {isEditing && <span className="text-muted">(để trống nếu không đổi)</span>}</span>
                 <Input
                   type="password"
                   value={form.password}
@@ -249,7 +249,7 @@ export default function AdminUsersPage() {
                   placeholder={isEditing ? 'Giữ mật khẩu hiện tại' : 'Mật khẩu tạm thời'}
                 />
               </label>
-              <label className="block space-y-2 text-sm font-medium text-gray-700">
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
                 <span>Họ và tên</span>
                 <Input
                   value={form.name}
@@ -257,7 +257,7 @@ export default function AdminUsersPage() {
                   required
                 />
               </label>
-              <label className="block space-y-2 text-sm font-medium text-gray-700">
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
                 <span>Email</span>
                 <Input
                   type="email"
@@ -266,12 +266,12 @@ export default function AdminUsersPage() {
                   required
                 />
               </label>
-              <label className="block space-y-2 text-sm font-medium text-gray-700">
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
                 <span>Quốc gia</span>
                 <select
                   value={form.countryId}
                   onChange={(event) => setField('countryId', event.target.value)}
-                  className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
                   required
                 >
                   {COUNTRY_OPTIONS.map(([id, label]) => (
@@ -280,19 +280,19 @@ export default function AdminUsersPage() {
                 </select>
               </label>
               <fieldset className="space-y-3">
-                <legend className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <legend className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <ShieldCheck className="h-4 w-4" /> Vai trò
                 </legend>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {ROLE_OPTIONS.map(([role, label]) => (
-                    <label key={role} className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 p-2.5 text-sm hover:border-primary-300">
+                    <label key={role} className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2.5 text-sm hover:border-primary-300">
                       <input
                         type="checkbox"
                         checked={form.roles.includes(role)}
                         onChange={() => toggleRole(role)}
                         className="mt-0.5 accent-primary-600"
                       />
-                      <span><span className="block font-medium text-gray-800">{label}</span><span className="text-xs text-gray-500">{role}</span></span>
+                      <span><span className="block font-medium text-slate-800">{label}</span><span className="text-xs text-muted">{role}</span></span>
                     </label>
                   ))}
                 </div>

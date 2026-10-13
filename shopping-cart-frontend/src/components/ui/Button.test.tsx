@@ -19,7 +19,7 @@ describe('Button', () => {
   it('renders with destructive variant', () => {
     render(<Button variant="destructive">Delete</Button>)
     const button = screen.getByRole('button', { name: /delete/i })
-    expect(button).toHaveClass('bg-red-600')
+    expect(button).toHaveClass('bg-danger')
   })
 
   it('handles click events', () => {

@@ -98,7 +98,7 @@ export default function ProductAdminPage() {
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>SKU</span>
                 <Input
                   value={form.sku}
@@ -107,7 +107,7 @@ export default function ProductAdminPage() {
                   required
                 />
               </label>
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>Tên sản phẩm</span>
                 <Input
                   value={form.name}
@@ -117,17 +117,17 @@ export default function ProductAdminPage() {
               </label>
             </div>
 
-            <label className="block space-y-2 text-sm font-medium text-gray-700">
+            <label className="block space-y-2 text-sm font-medium text-slate-700">
               <span>Mô tả</span>
               <textarea
-                className="min-h-28 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                className="min-h-28 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                 value={form.description}
                 onChange={(event) => setField('description', event.target.value)}
               />
             </label>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>Giá</span>
                 <Input
                   type="number"
@@ -138,7 +138,7 @@ export default function ProductAdminPage() {
                   required
                 />
               </label>
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>Tiền tệ</span>
                 <Input
                   value={form.currency}
@@ -150,10 +150,10 @@ export default function ProductAdminPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>Danh mục</span>
                 <select
-                  className="focus-ring h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                  className="focus-ring h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
                   value={form.category}
                   onChange={(event) => setField('category', event.target.value)}
                   required
@@ -162,7 +162,7 @@ export default function ProductAdminPage() {
                   {categories.data?.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
                 </select>
               </label>
-              <label className="space-y-2 text-sm font-medium text-gray-700">
+              <label className="space-y-2 text-sm font-medium text-slate-700">
                 <span>Tồn kho</span>
                 <Input
                   type="number"
@@ -175,7 +175,7 @@ export default function ProductAdminPage() {
               </label>
             </div>
 
-            <label className="space-y-2 text-sm font-medium text-gray-700">
+            <label className="space-y-2 text-sm font-medium text-slate-700">
               <span>URL hình ảnh</span>
               <Input
                 value={form.imageUrl}

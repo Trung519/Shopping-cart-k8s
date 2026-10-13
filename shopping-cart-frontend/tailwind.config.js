@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,31 +9,45 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Design system "Chợ": one brand colour for actions, one colour for prices.
+        // `primary` keeps its name so existing classes re-theme without a rewrite.
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#F1F8F5',
+          100: '#E3F1EC',
+          200: '#C4E2D6',
+          300: '#93CBB8',
+          400: '#54A68C',
+          500: '#1F8068',
+          600: '#0E6B55',
+          700: '#0A5242',
+          800: '#083F33',
+          900: '#062F27',
+          950: '#031C17',
         },
-        ink: '#0f172a',
-        emerald: '#0f9f8f',
-        mint: '#2dd4bf',
-        sunflower: '#f59e0b',
+        brand: {
+          DEFAULT: '#0E6B55',
+          strong: '#0A5242',
+          soft: '#E3F1EC',
+        },
+        price: '#D23F1F',
+        danger: { DEFAULT: '#A32E14', soft: '#FBE9E5' },
+        warning: { DEFAULT: '#B26A00', soft: '#FDF1DC' },
+        ink: '#15171A',
+        muted: '#6B716A',
+        line: '#DFE2DC',
+        ground: '#F3F4F1',
+        // Keep the full Tailwind scale so emerald-100 etc. still exist.
+        emerald: { ...colors.emerald, DEFAULT: '#0E6B55' },
+        mint: '#E3F1EC',
+        sunflower: '#B26A00',
       },
       boxShadow: {
-        lift: '0 18px 45px rgba(15, 23, 42, 0.12)',
-        soft: '0 8px 24px rgba(37, 99, 235, 0.08)',
+        lift: '0 12px 32px rgba(21, 23, 26, 0.14)',
+        soft: 'none',
       },
       borderRadius: {
-        card: '0.875rem',
-        panel: '1.125rem',
+        card: '10px',
+        panel: '16px',
       },
       fontFamily: {
         sans: ['"Be Vietnam Pro"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

@@ -1,16 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand: #0e6b55;
+    --brand-strong: #0a5242;
+    --brand-soft: #e3f1ec;
+    --price: #d23f1f;
+    --danger: #a32e14;
+    --warning: #b26a00;
+    --ink: #15171a;
+    --muted: #6b716a;
+    --line: #dfe2dc;
+    --ground: #f3f4f1;
+    --surface: #ffffff;
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 16px;
+  }
+
   * {
-    @apply border-slate-200;
+    @apply border-line;
   }
 
   body {
-    @apply bg-[#f6f8fc] text-ink antialiased;
+    @apply bg-ground text-ink antialiased;
     min-width: 320px;
     font-feature-settings:
       'rlig' 1,
@@ -31,42 +48,48 @@
   }
 
   ::selection {
-    @apply bg-mint/40 text-primary-950;
+    @apply bg-primary-200 text-primary-950;
   }
 
   :focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
   }
 }
 
 @layer components {
   .market-container {
-    @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-10;
+    @apply mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8;
   }
 
   .section-title {
-    @apply text-2xl font-extrabold tracking-[-0.025em] text-ink sm:text-3xl;
+    @apply text-xl font-bold tracking-[-0.02em] text-ink sm:text-[22px];
   }
 
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2;
   }
 
   .surface-card {
-    @apply rounded-card border border-slate-200/80 bg-white shadow-soft;
+    @apply rounded-card border border-line bg-white;
   }
 
+  /* Kept so existing markup keeps compiling; the design no longer shouts in caps. */
   .eyebrow {
-    @apply text-xs font-bold uppercase tracking-[0.14em] text-primary-600;
+    @apply text-[13px] font-semibold text-muted;
   }
 
   .page-heading {
-    @apply text-2xl font-extrabold tracking-[-0.03em] text-ink sm:text-3xl;
+    @apply text-2xl font-bold tracking-[-0.02em] text-ink sm:text-[28px];
   }
 
   .muted-copy {
-    @apply text-sm leading-6 text-slate-500;
+    @apply text-sm leading-6 text-muted;
+  }
+
+  .price {
+    @apply font-bold text-price;
+    font-variant-numeric: tabular-nums;
   }
 }
 

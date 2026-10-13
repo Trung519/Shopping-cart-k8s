@@ -53,17 +53,17 @@ export default function ProductsPage() {
 
   return (
     <div className="market-container py-7 sm:py-10">
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div><p className="eyebrow">Danh mục</p><h1 className="page-heading mt-1">Khám phá sản phẩm</h1><p className="mt-2 text-sm text-slate-500">{products.data?.totalItems ?? 0} sản phẩm phù hợp với bộ lọc hiện tại</p></div>
+      <div className="flex flex-col gap-4 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div><p className="eyebrow">Danh mục</p><h1 className="page-heading mt-1">Khám phá sản phẩm</h1><p className="mt-2 text-sm text-muted">{products.data?.totalItems ?? 0} sản phẩm phù hợp với bộ lọc hiện tại</p></div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setFiltersOpen(true)} className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold lg:hidden"><SlidersHorizontal className="h-4 w-4" /> Bộ lọc</button>
-          <label className="flex items-center gap-2 text-sm text-slate-500"><span className="hidden sm:inline">Sắp xếp</span><select value={sort} onChange={(event) => updateParam('sort', event.target.value)} className="focus-ring min-h-11 rounded-xl border border-slate-300 bg-white px-3 font-medium text-ink"><option value="newest">Mới nhất</option><option value="price_asc">Giá thấp đến cao</option><option value="price_desc">Giá cao đến thấp</option><option value="name">Tên A-Z</option></select></label>
+          <label className="flex items-center gap-2 text-sm text-muted"><span className="hidden sm:inline">Sắp xếp</span><select value={sort} onChange={(event) => updateParam('sort', event.target.value)} className="focus-ring min-h-11 rounded-xl border border-slate-300 bg-white px-3 font-medium text-ink"><option value="newest">Mới nhất</option><option value="price_asc">Giá thấp đến cao</option><option value="price_desc">Giá cao đến thấp</option><option value="name">Tên A-Z</option></select></label>
           {auth.isAdmin && <Link to="/admin/products/new" className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-4 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> Thêm sản phẩm</Link>}
         </div>
       </div>
 
       <form onSubmit={submitSearch} className="mt-6 flex max-w-2xl gap-2">
-        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><Input type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Tìm trong danh mục" className="pl-9" /></div>
+        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted" /><Input type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Tìm trong danh mục" className="pl-9" /></div>
         <Button type="submit">Tìm kiếm</Button>
       </form>
 
@@ -101,5 +101,5 @@ function Pagination({ page, totalPages, setPage }: { page: number; totalPages: n
 
 function CatalogSkeleton() { return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xl:gap-4">{Array.from({ length: 10 }).map((_, index) => <div key={index} className="overflow-hidden rounded-card border bg-white"><div className="aspect-[4/5] animate-pulse bg-slate-200" /><div className="space-y-3 p-4"><div className="h-4 animate-pulse rounded bg-slate-200" /><div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" /></div></div>)}</div> }
 function CatalogError() { return <div className="rounded-card border border-primary-200 bg-primary-50 p-6 text-primary-800">Không thể tải danh mục. Vui lòng thử lại sau.</div> }
-function EmptyCatalog({ clear }: { clear: () => void }) { return <div className="surface-card flex min-h-80 flex-col items-center justify-center p-8 text-center"><PackageSearch className="h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-bold">Không tìm thấy sản phẩm</h2><p className="mt-1 text-sm text-slate-500">Thử từ khóa hoặc bộ lọc khác.</p><Button type="button" variant="outline" className="mt-4" onClick={clear}>Xóa bộ lọc</Button></div> }
+function EmptyCatalog({ clear }: { clear: () => void }) { return <div className="surface-card flex min-h-80 flex-col items-center justify-center p-8 text-center"><PackageSearch className="h-12 w-12 text-slate-300" /><h2 className="mt-4 text-lg font-bold">Không tìm thấy sản phẩm</h2><p className="mt-1 text-sm text-muted">Thử từ khóa hoặc bộ lọc khác.</p><Button type="button" variant="outline" className="mt-4" onClick={clear}>Xóa bộ lọc</Button></div> }
 function numberParam(value: string | null) { if (!value) return undefined; const number = Number(value); return Number.isFinite(number) ? number : undefined }

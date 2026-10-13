@@ -7,7 +7,7 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return <div className="flex min-h-64 flex-col items-center justify-center rounded-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-primary-500 shadow-soft"><Inbox className="h-7 w-7" /></span><h2 className="mt-4 text-lg font-extrabold text-ink">{title}</h2><p className="mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>{action && <div className="mt-5">{action}</div>}</div>
+  return <div className="flex min-h-64 flex-col items-center justify-center rounded-card border border-dashed border-slate-300 bg-ground p-8 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-primary-500 shadow-soft"><Inbox className="h-7 w-7" /></span><h2 className="mt-4 text-lg font-extrabold text-ink">{title}</h2><p className="mt-2 max-w-md text-sm leading-6 text-muted">{description}</p>{action && <div className="mt-5">{action}</div>}</div>
 }
 
 export function ErrorState({ title = 'Không thể tải dữ liệu', description = 'Vui lòng thử lại sau.' }: { title?: string; description?: string }) {
@@ -16,5 +16,5 @@ export function ErrorState({ title = 'Không thể tải dữ liệu', descripti
 
 export function Toast({ title, description, tone = 'default' }: { title: string; description?: string; tone?: 'default' | 'success' | 'error' }) {
   const tones = { default: 'border-primary-200 bg-white', success: 'border-emerald/30 bg-white', error: 'border-red-200 bg-white' }
-  return <div role="status" className={cn('rounded-card border p-4 shadow-lift', tones[tone])}><p className="text-sm font-bold text-ink">{title}</p>{description && <p className="mt-1 text-sm text-slate-500">{description}</p>}</div>
+  return <div role="status" className={cn('rounded-card border p-4 shadow-lift', tones[tone])}><p className="text-sm font-bold text-ink">{title}</p>{description && <p className="mt-1 text-sm text-muted">{description}</p>}</div>
 }
