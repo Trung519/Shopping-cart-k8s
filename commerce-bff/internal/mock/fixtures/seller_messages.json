@@ -1,0 +1,12 @@
+[
+  {"id": "th-1", "buyer": "Nguyễn Minh Anh", "product": "Tai nghe chống ồn WH-40", "messages": [
+    {"from": "buyer", "text": "Shop ơi, tai nghe này còn màu kem không ạ?", "minutesAgo": 42},
+    {"from": "seller", "text": "Dạ còn 8 chiếc màu kem bạn nhé.", "minutesAgo": 38}
+  ]},
+  {"id": "th-2", "buyer": "Trần Quốc Bảo", "product": "Sạc nhanh GaN 65W", "messages": [
+    {"from": "buyer", "text": "Sạc này dùng được cho laptop 14 inch không shop?", "minutesAgo": 15}
+  ]},
+  {"id": "th-3", "buyer": "Lê Thu Hà", "product": "Bàn phím cơ 75%", "messages": [
+    {"from": "buyer", "text": "Bao giờ shop nhập thêm bàn phím vậy?", "minutesAgo": 300}
+  ]}
+]

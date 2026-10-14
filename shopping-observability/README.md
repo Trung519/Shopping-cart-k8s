@@ -1,5 +1,10 @@
 # Shopping Observability
 
+## Deploy and verify
+
+Use [scripts/README.md](scripts/README.md): `check` → `plan` → `deploy --plan-id ID`.
+The CLI verifies fresh application metrics/logs/traces and dependencies, journals changes and compensates on deployment failure. [Current test results](docs/SRE_DEPLOY_TEST_RESULTS.md) distinguish script tests from application coverage. Existing historical evidence below does not replace a new acceptance run.
+
 Chart 0.5.0 manages logs, metrics, alerts and distributed tracing in the existing namespace `shopping-cart-observability`, through the existing Argo CD Application `shopping-observability` on branch `dev`.
 
 ## Components
@@ -19,15 +24,15 @@ The standalone vendored Grafana chart 10.5.15 remains disabled. Active Grafana i
 - [Fluent Bit + Loki execution plan](docs/PLAN_FLUENTBIT_LOKI.md)
 - [Tempo + Collector + OTel execution plan, real evidence and Argo operations](docs/PLAN_TEMPO_OTEL.md)
 
-The verified flow is a real public products GET through Gateway → commerce-bff → product-catalog → PostgreSQL. The trace contains two application services and DB client spans; browser/Gateway server spans, checkout, payment and RabbitMQ tracing are not implemented by this stage. Grafana links both logs → trace and trace → logs, and the existing live metrics dashboard links to Tempo.
+The initial historical stage verified a public products GET through Gateway → commerce-bff → product-catalog → PostgreSQL. That stage covered two application services and DB client spans; later full-system tracing work is recorded below. Grafana links logs and traces, and the live metrics dashboard links to Tempo. Browser click/render tracing remains outside the current contract.
 
 ## Operate through the existing Argo Applications
 
 Edit existing source/chart/local overrides → lint/render and review → build/import fresh application image tags → commit/push dev → Refresh/Diff/Sync the existing Applications. In the current local-image setup, Argo does not build or distribute images. Both Argo sources must use the same pushed revision. Keep prune=false for this change and preserve PVCs. Follow the tracing plan for selective sync rather than reapplying unrelated CRDs/hooks/data charts.
 
 ```bash
-helm lint shopping-observability/helmchart
-helm template shopping-observability shopping-observability/helmchart --namespace shopping-cart-observability
+helm lint charts/platform/shopping-observability
+helm template shopping-observability charts/platform/shopping-observability --namespace shopping-cart-observability
 kubectl --context k3d-lab-k8s -n shopping-cart-observability get pods,pvc,svc
 kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/shopmon-grafana 3000:80
 kubectl --context k3d-lab-k8s -n shopping-cart-observability port-forward svc/shopmon-prometheus 9090:9090
@@ -41,7 +46,7 @@ Credentials remain in existing Kubernetes Secrets; do not print them into execut
 
 ## Full-system tracing acceptance
 
-Full request instrumentation for8 SDK services and namespace Istio tracing is implemented.30 real requests/666 verified spans include checkout, order confirmation, JDBC/Redis and exact RabbitMQ producer→consumer propagation. [Final execution plan](docs/PLAN_FULL_SYSTEM_TRACING.md) records corrections, selective existing-Argo operations, evidence and explicit limits. Observability remains in shopping-cart-observability; the existing Istio mesh merge and additive order-status SQL migration are explicit prerequisites.
+Historical full-system acceptance recorded 30 requests and 666 spans, including checkout, order confirmation, JDBC/Redis and exact RabbitMQ producer→consumer propagation. [Execution evidence](docs/PLAN_FULL_SYSTEM_TRACING.md) records that run's corrections and limits. Repeat the new CLI acceptance to assess current application log correlation and telemetry coverage. Observability remains in shopping-cart-observability; mesh setup and the documented SQL migration remain explicit prerequisites.
 
 
 Catalog access-log correlation correction: deployed v1.4.8-access-trace-20261003; product UUID access lines now carry active trace/span IDs. See final plan correction section and catalog-access-correlation-evidence.json for actual GET200→12-span SQL trace acceptance. Historical logs remain unchanged.

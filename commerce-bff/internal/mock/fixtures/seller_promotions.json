@@ -1,0 +1,4 @@
+[
+  {"id": "pr-1", "name": "Giảm 10% phụ kiện", "kind": "percent", "value": 10, "minSpend": 200000, "status": "ACTIVE", "used": 41},
+  {"id": "pr-2", "name": "Freeship cuối tuần", "kind": "freeship", "value": 30000, "minSpend": 0, "status": "PAUSED", "used": 12}
+]

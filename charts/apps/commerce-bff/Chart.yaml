@@ -1,0 +1,10 @@
+apiVersion: v2
+name: commerce-bff
+description: Browser-facing marketplace API and OIDC session gateway
+type: application
+version: 0.1.4
+appVersion: "0.1.6"
+dependencies:
+  - name: shopping-app
+    version: 0.1.0
+    repository: file://../../library/shopping-app

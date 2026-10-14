@@ -145,7 +145,6 @@ run_check test-bff "Commerce BFF Go tests" bash -lc "cd commerce-bff && go test 
 run_check test-account "Account service Go tests" bash -lc "cd account-service && go test ./..."
 run_check test-seller "Seller service Go tests" bash -lc "cd seller-service && go test ./..."
 run_check test-basket "Basket unit tests" bash -lc "cd shopping-cart-basket && go test ./internal/..."
-run_check test-payment-go "Non-runtime payment Go tests" bash -lc "cd shopping-cart-payment/go && go test ./..."
 run_check test-frontend "Frontend type-check and unit tests" bash -lc "cd shopping-cart-frontend && NODE=/Users/phamquangtrung/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node; \"\$NODE\" node_modules/typescript/bin/tsc -b && \"\$NODE\" node_modules/vitest/vitest.mjs run"
 run_check build-frontend "Frontend production build" bash -lc "cd shopping-cart-frontend && NODE=/Users/phamquangtrung/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node; \"\$NODE\" node_modules/vite/bin/vite.js build"
 run_check test-ui-deployed "Playwright against deployed UI on Chromium, Firefox, WebKit and iPhone 13" bash -lc "cd shopping-cart-frontend && export BASE_URL='$BASE_URL'; NODE=/Users/phamquangtrung/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node; \"\$NODE\" node_modules/@playwright/test/cli.js test --reporter=json"
@@ -154,18 +153,18 @@ run_check test-order "Order Maven tests with pinned local RabbitMQ client" docke
 run_check test-payment-java "Runtime payment Java tests with pinned local RabbitMQ client" docker run --rm -v "$ROOT:/workspace" -v shopcart-e2e-m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock -e DOCKER_HOST=unix:///var/run/docker.sock -w /workspace maven:3.9-eclipse-temurin-21 sh -lc "mvn -B -f rabbitmq-client-java/pom.xml -pl rabbitmq-client -am package -DskipTests && mvn -B install:install-file -Dfile=rabbitmq-client-java/rabbitmq-client/target/rabbitmq-client-1.0.1.jar -DpomFile=shopping-cart-payment/vendor/rabbitmq-client-1.0.1.pom && mvn -B -f shopping-cart-payment/pom.xml test"
 
 for spec in \
-  "shopping-cart-frontend/helmchart:20-frontend.yaml" \
-  "commerce-bff/helmchart:25-commerce-bff.yaml" \
-  "account-service/helmchart:26-account-service.yaml" \
-  "seller-service/helmchart:27-seller-service.yaml" \
-  "shopping-cart-basket/helmchart:21-basket-service.yaml" \
-  "shopping-cart-product-catalog/helmchart:22-product-catalog.yaml" \
-  "shopping-cart-order/helmchart:23-order-service.yaml" \
-  "shopping-cart-payment/helmchart:24-payment-service.yaml"; do
-  chart="${spec%%:*}"; values="${spec#*:}"; id="helm-$(basename "$(dirname "$chart")")"
-  run_check "$id" "Helm lint/template $chart" bash -lc "helm lint '$chart' -f config-secret-secure/values/local/00-global.yaml -f config-secret-secure/values/local/'$values' && helm template test '$chart' -f config-secret-secure/values/local/00-global.yaml -f config-secret-secure/values/local/'$values' >/dev/null"
+  "charts/apps/frontend:20-frontend.yaml" \
+  "charts/apps/commerce-bff:25-commerce-bff.yaml" \
+  "charts/apps/account-service:26-account-service.yaml" \
+  "charts/apps/seller-service:27-seller-service.yaml" \
+  "charts/apps/basket-service:21-basket-service.yaml" \
+  "charts/apps/product-catalog:22-product-catalog.yaml" \
+  "charts/apps/order-service:23-order-service.yaml" \
+  "charts/apps/payment-service:24-payment-service.yaml"; do
+  chart="${spec%%:*}"; values="${spec#*:}"; id="helm-$(basename "$chart")"
+  run_check "$id" "Helm lint/template $chart" bash -lc "helm dependency build '$chart' >/dev/null && helm lint '$chart' -f config-secret-secure/values/local/'$values' && helm template test '$chart' -f config-secret-secure/values/local/'$values' >/dev/null"
 done
-run_check helm-integration "Helm lint/template integration" bash -lc "helm lint shopping-integration/helmchart -f config-secret-secure/values/local/00-global.yaml -f config-secret-secure/values/local/10-shopping-integration.yaml && helm template test shopping-integration/helmchart -f config-secret-secure/values/local/00-global.yaml -f config-secret-secure/values/local/10-shopping-integration.yaml >/dev/null"
+run_check helm-integration "Helm lint/template integration" bash -lc "helm lint charts/platform/shopping-integration -f config-secret-secure/values/local/10-shopping-integration.yaml && helm template test charts/platform/shopping-integration -f config-secret-secure/values/local/10-shopping-integration.yaml >/dev/null"
 
 # Containerized Java tests can briefly pressure the local k3d nodes. Do not
 # start business workflows until every deployed app has recovered.

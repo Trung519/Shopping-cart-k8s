@@ -75,5 +75,5 @@ image — Node 20 builder → Nginx Alpine runtime.
 
 ## Kubernetes
 
-The `helmchart/` chart deploys to `shopping-cart-apps`. Argo CD uses external values from
+The `charts/apps/frontend` chart (repository root) deploys to `shopping-cart-apps`. Argo CD uses external values from
 the Ubuntu k3s app cluster. Image tag updated by the CI infra workflow on every push to `main`.

@@ -1,0 +1,6 @@
+dependencies:
+- name: shopping-app
+  repository: file://../../library/shopping-app
+  version: 0.1.0
+digest: sha256:5b143100f98d9c6851854bab55ed50cc37e95387ec769eaeae39eebdf5ecf56b
+generated: "2026-10-14T21:52:42.739518+07:00"

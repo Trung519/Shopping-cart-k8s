@@ -29,6 +29,10 @@ type Config struct {
 	PaymentURL         string
 	AccountURL         string
 	SellerURL          string
+	MockEnabled        bool
+	MockPaymentDelay   time.Duration
+	MockShipmentStep   time.Duration
+	MockEventInterval  time.Duration
 }
 
 func Load() (Config, error) {
@@ -54,6 +58,11 @@ func Load() (Config, error) {
 		PaymentURL:         env("PAYMENT_URL", "http://payment-service.shopping-cart-payment.svc.cluster.local"),
 		AccountURL:         env("ACCOUNT_URL", "http://account-service.shopping-cart-apps.svc.cluster.local"),
 		SellerURL:          env("SELLER_URL", "http://seller-service.shopping-cart-apps.svc.cluster.local"),
+		// The mock API is off unless explicitly enabled; see internal/mock.
+		MockEnabled:       envBool("MOCK_API_ENABLED", false),
+		MockPaymentDelay:  time.Duration(envInt("MOCK_PAYMENT_DELAY_SECONDS", 5)) * time.Second,
+		MockShipmentStep:  time.Duration(envInt("MOCK_SHIPMENT_STEP_SECONDS", 10)) * time.Second,
+		MockEventInterval: time.Duration(envInt("MOCK_EVENT_INTERVAL_SECONDS", 15)) * time.Second,
 	}
 	if len(cfg.SessionSecret) < 32 {
 		return Config{}, fmt.Errorf("SESSION_SECRET must contain at least 32 characters")

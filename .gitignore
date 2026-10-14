@@ -19,3 +19,5 @@
 *.key
 *.p12
 *.jks
+# Built by `helm dependency build` from charts/library (see charts/README.md).
+charts/apps/*/charts/

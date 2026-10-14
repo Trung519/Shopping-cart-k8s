@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wilddog64/commerce-bff/internal/config"
+	"github.com/wilddog64/commerce-bff/internal/mock"
 	"github.com/wilddog64/commerce-bff/internal/oidc"
 	commerceproxy "github.com/wilddog64/commerce-bff/internal/proxy"
 	"github.com/wilddog64/commerce-bff/internal/session"
@@ -66,6 +67,12 @@ func main() {
 	mux.HandleFunc("/api/v2/auth/callback", s.callback)
 	mux.HandleFunc("/api/v2/auth/me", s.me)
 	mux.HandleFunc("/api/v2/auth/logout", s.logout)
+	if cfg.MockEnabled {
+		mockStore := mock.NewRedisStore(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDB)
+		defer mockStore.Close()
+		mux.Handle("/api/v2/mock/", mock.New(mock.Config{PaymentDelay: cfg.MockPaymentDelay, ShipmentStep: cfg.MockShipmentStep, EventInterval: cfg.MockEventInterval}, mockStore, s.mockIdentity))
+		log.Print("mock API enabled under /api/v2/mock/ (responses are fake and tagged mock=true)")
+	}
 	mux.HandleFunc("/api/v2/", s.api)
 	log.Printf("commerce-bff listening on %s", cfg.Address)
 	handler := otelhttp.NewHandler(telemetry.RequestLog(securityHeaders(mux)), "commerce-bff",
@@ -230,6 +237,20 @@ func (s *server) api(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"message": "API không tồn tại"})
+}
+
+// mockIdentity adapts the BFF session to the mock package, so mock endpoints
+// are protected by the same cookie as the real ones.
+func (s *server) mockIdentity(w http.ResponseWriter, r *http.Request) (mock.Identity, bool) {
+	value, ok := s.currentSession(w, r, true)
+	if !ok {
+		return mock.Identity{}, false
+	}
+	name := value.User.Name
+	if name == "" {
+		name = value.User.Username
+	}
+	return mock.Identity{ID: value.User.ID, Name: name, Roles: value.User.Roles}, true
 }
 
 func hasAnyRole(userRoles, allowed []string) bool {

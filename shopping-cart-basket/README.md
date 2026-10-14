@@ -152,8 +152,8 @@ make docker-build
 make docker-run
 
 # Kubernetes deployment
-helm lint helmchart -f ../config-secret-secure/values/local/21-basket-service.yaml
-helm upgrade --install basket-service helmchart --namespace shopping-cart-apps \
+helm lint ../charts/apps/basket-service -f ../config-secret-secure/values/local/21-basket-service.yaml
+helm upgrade --install basket-service ../charts/apps/basket-service --namespace shopping-cart-apps \
   -f ../config-secret-secure/values/local/21-basket-service.yaml
 ```
 

@@ -1,0 +1,20 @@
+# Copy this file, then pass --config /path/to/your.yaml. Omitted fields use profile.
+# S00/S01: target cluster; every command uses this context. No fallback cluster.
+context: k3d-lab-k8s
+# S00/S08: false = public read-only verification. Full authenticated/AMQP acceptance
+# needs true and existing Keycloak admin Secret reference from the profile.
+allow_test_writes: false
+# S01/S07: stop before rollout if VM memory is below this floor; preserve old pods.
+min_memory_mib: 1024
+# Per-run, per-step, telemetry ingestion and recovery deadlines, all in seconds.
+timeout: 1800
+step_timeout: 300
+telemetry_wait: 180
+rollback_timeout: 900
+# S09: existing lab has Redis CLIENT spans, not a Redis server exporter.
+# true requires redis_job to exist; missing exporter => METRIC_MISSING, no fake pass.
+redis_server_metrics_required: false
+# S10: optional notification test must use an internal receiver, routed by sre_probe.
+# Leave disabled unless that test receiver/route already exists. No Telegram test.
+notification_required: false
+controlled_receiver_url: null

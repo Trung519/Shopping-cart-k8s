@@ -41,6 +41,9 @@ def main():
         assert namespace in namespaces, f"Destination not allowed: {name}"
         chart = ROOT / entry["chartPath"]
         assert (chart / "Chart.yaml").is_file(), f"Missing chart: {name}"
+        if "file://../../library/" in (chart / "Chart.yaml").read_text():
+            # charts/library dependencies are not committed; always rebuild so edits to the library are rendered.
+            subprocess.run(["helm", "dependency", "build", str(chart)], capture_output=True, check=True)
         # Resolve exactly the template's declared values in precedence order.
         values = [path.replace("$values/", "").replace("{{.valuesPath}}", entry["valuesPath"])
                   for path in template["sources"][0]["helm"]["valueFiles"]]

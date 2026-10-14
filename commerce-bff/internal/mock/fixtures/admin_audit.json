@@ -1,0 +1,6 @@
+[
+  {"actor": "admin", "action": "SELLER_APPROVED", "target": "Tech House", "minutesAgo": 95},
+  {"actor": "catalog-moderator", "action": "PRODUCT_HIDDEN", "target": "SKU KB-75-HS", "minutesAgo": 410},
+  {"actor": "finance-operator", "action": "SETTLEMENT_PAID", "target": "st-3", "minutesAgo": 1500},
+  {"actor": "admin", "action": "USER_ROLE_CHANGED", "target": "user-admin → seller-reviewer", "minutesAgo": 3000}
+]

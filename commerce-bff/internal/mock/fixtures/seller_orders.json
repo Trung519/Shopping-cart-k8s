@@ -1,0 +1,8 @@
+[
+  {"id": "SO-1001", "buyer": "Nguyễn Minh Anh", "city": "TP. Hồ Chí Minh", "items": [{"name": "Tai nghe chống ồn WH-40", "qty": 1, "price": 1290000}], "status": "NEW", "minutesAgo": 12},
+  {"id": "SO-1002", "buyer": "Trần Quốc Bảo", "city": "Hà Nội", "items": [{"name": "Sạc nhanh GaN 65W", "qty": 2, "price": 459000}], "status": "NEW", "minutesAgo": 47},
+  {"id": "SO-1003", "buyer": "Lê Thu Hà", "city": "Đà Nẵng", "items": [{"name": "Bàn phím cơ 75%", "qty": 1, "price": 890000}, {"name": "Chuột không dây", "qty": 1, "price": 249000}], "status": "CONFIRMED", "minutesAgo": 190},
+  {"id": "SO-1004", "buyer": "Phạm Đức Huy", "city": "Cần Thơ", "items": [{"name": "Ổ cứng SSD di động 1TB", "qty": 1, "price": 1690000}], "status": "PACKED", "minutesAgo": 520},
+  {"id": "SO-1005", "buyer": "Võ Lan Phương", "city": "Hải Phòng", "items": [{"name": "Đèn bàn LED chống cận", "qty": 1, "price": 429000}], "status": "SHIPPED", "minutesAgo": 1500},
+  {"id": "SO-1006", "buyer": "Đặng Gia Khánh", "city": "Huế", "items": [{"name": "Chuột không dây im lặng", "qty": 3, "price": 249000}], "status": "DELIVERED", "minutesAgo": 4300}
+]

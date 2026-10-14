@@ -11,7 +11,7 @@ gitops/control-plane/services.yaml   # ApplicationSet: 11 service/chart entries
 gitops/validate.py                   # Offline Helm render and ownership checks
 ```
 
-The root Application reads only `gitops/control-plane`, so it cannot recursively include itself. It creates the AppProject and ApplicationSet. The ApplicationSet creates Applications for eight application services, integration, security and observability. Each child uses the existing Helm release name, destination namespace and chart. Both chart and values sources point at this monorepo on `dev`. Values are applied in order: chart defaults, `00-global.yaml`, then service values. Frontend's deployment tag is controlled by `config-secret-secure/values/local/20-frontend.yaml`.
+The root Application reads only `gitops/control-plane`, so it cannot recursively include itself. It creates the AppProject and ApplicationSet. The ApplicationSet creates Applications for eight application services, integration, security and observability. Each child uses the existing Helm release name, destination namespace and chart. Both chart and values sources point at this monorepo on `dev`. Values are applied in order: chart defaults, then service values. Frontend's deployment tag is controlled by `config-secret-secure/values/local/20-frontend.yaml`.
 
 All Applications use **manual sync**. Creating or updating an Application does not deploy its workload. There is no automated prune or cascade-delete finalizer. The ApplicationSet uses `create-update` and `preserveResourcesOnDeletion: true`: removing a catalog entry does not clean up its existing Application; decommissioning requires an explicit separate decision. Applications remain owned by the ApplicationSet through Kubernetes owner references, so deleting the ApplicationSet itself may delete those Application objects, but preserved workloads are not cascade-deleted by an Argo finalizer.
 
@@ -51,12 +51,12 @@ Add an entry under `spec.generators[0].list.elements` in `services.yaml`:
 
 ```yaml
 - name: new-service
-  chartPath: new-service/helmchart
+  chartPath: charts/apps/new-service
   namespace: shopping-cart-apps
   valuesPath: config-secret-secure/values/local/28-new-service.yaml
 ```
 
-Provide the chart and values file, run validation, review and push. Refresh and Sync the root Application so the updated ApplicationSet is applied. The controller then creates the new child; manually review and Sync that child when ready. For new destination namespaces, update project permissions too.
+Provide the chart (copy an existing `charts/apps/*` chart so it uses the `shopping-app` library — see [charts/README.md](../charts/README.md)) and values file, run validation, review and push. Refresh and Sync the root Application so the updated ApplicationSet is applied. The controller then creates the new child; manually review and Sync that child when ready. For new destination namespaces, update project permissions too.
 
 ## Deploy a new version
 

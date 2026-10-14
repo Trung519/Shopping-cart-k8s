@@ -1,0 +1,8 @@
+[
+  {"sku": "WH-40-BLK", "name": "Tai nghe WH-40 (Đen)", "stock": 37, "reserved": 3, "lowThreshold": 10},
+  {"sku": "WH-40-CRM", "name": "Tai nghe WH-40 (Kem)", "stock": 8, "reserved": 1, "lowThreshold": 10},
+  {"sku": "GAN-65-WHT", "name": "Sạc GaN 65W (Trắng)", "stock": 124, "reserved": 12, "lowThreshold": 20},
+  {"sku": "KB-75-HS", "name": "Bàn phím cơ 75%", "stock": 5, "reserved": 2, "lowThreshold": 10},
+  {"sku": "MS-WL-SL", "name": "Chuột không dây im lặng", "stock": 66, "reserved": 4, "lowThreshold": 15},
+  {"sku": "SSD-1T-EX", "name": "SSD di động 1TB", "stock": 19, "reserved": 0, "lowThreshold": 8}
+]

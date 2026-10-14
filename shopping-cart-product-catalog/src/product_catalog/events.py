@@ -1,6 +1,6 @@
 """Event definitions for Product Catalog service.
 
-These events match the schemas defined in shopping-cart-infra/docs/message-schemas.md
+These events match the schemas defined in shopping-integration/docs/message-schemas.md
 """
 
 from datetime import datetime

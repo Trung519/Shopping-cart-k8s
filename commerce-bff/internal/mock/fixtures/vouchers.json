@@ -1,0 +1,6 @@
+[
+  {"code": "SALE50", "title": "Giảm 50.000₫", "description": "Đơn từ 300.000₫", "kind": "amount", "value": 50000, "cap": 0, "minSpend": 300000, "expired": false},
+  {"code": "GIAM10", "title": "Giảm 10% tối đa 100.000₫", "description": "Đơn từ 200.000₫", "kind": "percent", "value": 10, "cap": 100000, "minSpend": 200000, "expired": false},
+  {"code": "FREESHIP", "title": "Miễn phí vận chuyển", "description": "Không giới hạn giá trị đơn", "kind": "freeship", "value": 30000, "cap": 0, "minSpend": 0, "expired": false},
+  {"code": "HETHAN", "title": "Ưu đãi đã kết thúc", "description": "Mã dùng để thử trường hợp hết hạn", "kind": "amount", "value": 20000, "cap": 0, "minSpend": 0, "expired": true}
+]

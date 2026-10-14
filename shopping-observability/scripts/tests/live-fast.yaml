@@ -1,0 +1,3 @@
+# Test override only: bounded negative capability checks, same strict assertions.
+telemetry_wait: 30
+timeout: 1200

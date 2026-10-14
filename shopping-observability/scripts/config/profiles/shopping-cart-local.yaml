@@ -1,0 +1,156 @@
+# S00: CLI > environment > user config > this profile. Empty/invalid values FAIL.
+# S01: always verify this context's kube-system UID; no alternate-cluster fallback.
+context: k3d-lab-k8s
+repo_root: auto
+argo_namespace: argocd
+obs_namespace: shopping-cart-observability
+obs_app: shopping-observability
+# S02: pin remote SHA in the saved plan; deploy never silently follows a new HEAD.
+repo_url: https://github.com/Trung519/Shopping-cart-k8s.git
+branch: dev
+sync_mode: selected
+# S00/S08: true permits ONLY isolated synthetic user/product/cart/order tests.
+# false => read-only verify covers public routes; FULL deploy is blocked.
+allow_test_writes: false
+contract: config/contracts/shopping-cart.yaml
+# Forward deadline, per-step wait, ingestion wait, and independent recovery budget.
+timeout: 1800
+step_timeout: 300
+telemetry_wait: 180
+rollback_timeout: 900
+plan_ttl: 1800
+stability_seconds: 120
+# S01/S07: VM free-memory floor plus surge check. Never auto-add swap.
+min_memory_mib: 1024
+vm_memory_command: [rdctl, shell, cat, /proc/meminfo]
+# S03/S08: access real gateway through an owned random local tunnel.
+gateway:
+  namespace: shopping-cart-gateway
+  service: nginx-gateway-istio
+  port: 80
+  base_url: http://shopping-cart.localhost:8080
+  allowed_hosts: [shopping-cart.localhost, keycloak.localhost]
+  # V1 tunnels HTTP only; validate before sending credentials and each redirect.
+  allowed_ports: [80, 8080]
+# S03/S08: references ONLY; missing credentials stop the run, no defaults.
+auth:
+  namespace: shopping-cart-identity
+  service: keycloak
+  port: 80
+  secret: keycloak-secrets
+  username_key: KEYCLOAK_ADMIN
+  password_key: KEYCLOAK_ADMIN_PASSWORD
+  realm: shopping-cart
+  role: platform-admin
+grafana:
+  service: shopmon-grafana
+  port: 80
+  secret: shopmon-grafana-admin
+  username_key: admin-user
+  password_key: admin-password
+# S06/S09: backend service names; all connections are queried, not just inspected.
+backends:
+  prometheus: {service: shopmon-prometheus, port: 9090}
+  loki: {service: loki-gateway, port: 80}
+  tempo: {service: tempo, port: 3200}
+  collector: {service: otel-collector, port: 4318}
+  alertmanager: {service: shopmon-alertmanager, port: 9093}
+required_jobs: [istio-envoy, rabbitmq, kube-state-metrics, node-exporter, kubelet, tempo, otel-collector]
+# S04: AMQP endpoint remains in app config; management used ONLY to check consumers.
+rabbitmq:
+  namespace: shopping-cart-data
+  service: rabbitmq-management
+  port: 15672
+  secret: rabbitmq-credentials
+  username_key: username
+  password_key: password
+  vhost: /
+  required_queue: inventory.order-created
+  producer: order-service
+  consumer: product-catalog
+# S09: client Redis spans REQUIRED. Server exporter metrics are explicitly optional
+# for this existing lab; setting true blocks until an exporter job exists.
+redis_server_metrics_required: false
+redis_job: redis
+# S10: loaded rules and evaluation are checked; external notification is not sent.
+# Full notification gate requires controlled_receiver_url and alertmanager route
+# matching label sre_probe=true. No fallback to Telegram or other human receiver.
+controlled_receiver_url: null
+notification_required: false
+required_alerts: [ShoppingTracingTargetDown, ShoppingTraceExportFailed]
+# S01/S05/S07: whitelist ownership and reversible fields. No data/security/root sync.
+# Backend CRDs/admission hooks must already exist. Changed new storage/CRDs rejected.
+managed_apps:
+  - name: shopping-observability
+    resources:
+      - [ConfigMap, tempo-config]
+      - [Service, tempo]
+      - [StatefulSet, tempo]
+      - [ConfigMap, otel-collector-config]
+      - [Service, otel-collector]
+      - [Deployment, otel-collector]
+      - [ConfigMap, fluent-bit]
+      - [DaemonSet, fluent-bit]
+      - [ConfigMap, loki]
+      - [StatefulSet, loki]
+      - [Deployment, loki-gateway]
+      - [ConfigMap, shopmon-grafana]
+      - [Deployment, shopmon-grafana]
+      - [Prometheus, shopmon-prometheus]
+      # Public scrape config generated as a Secret by upstream chart. Only the
+      # credential-free YAML is journaled; auth-bearing configs are refused.
+      - [GeneratedScrapeConfig, shopmon-prometheus-scrape-confg]
+      - [Alertmanager, shopmon-alertmanager]
+      - [PrometheusRule, shopmon-shopping-alerts]
+      - [PrometheusRule, shopping-tracing]
+      - [ConfigMap, shopmon-live-dashboard]
+      - [Telemetry, shopping-request-tracing]
+  - name: order-service
+    resources: [[ConfigMap, order-service-config], [Deployment, order-service]]
+  - name: payment-service
+    resources: [[ConfigMap, payment-service-config], [Deployment, payment-service]]
+  - name: shopping-integration
+    resources: [[ConfigMap, keycloak-config], [Deployment, keycloak]]
+  - name: account-service
+    resources: [[ConfigMap, account-service-config], [Deployment, account-service]]
+  - name: seller-service
+    resources: [[ConfigMap, seller-service-config], [Deployment, seller-service]]
+  - name: basket-service
+    resources: [[ConfigMap, basket-service-config], [Deployment, basket-service]]
+  - name: product-catalog
+    resources: [[ConfigMap, product-catalog-config], [Deployment, product-catalog]]
+  - name: commerce-bff
+    resources: [[ConfigMap, commerce-bff-config], [Deployment, commerce-bff]]
+workloads:
+  - [shopping-cart-observability, Deployment, shopmon-grafana]
+  - [shopping-cart-observability, Deployment, shopmon-operator]
+  - [shopping-cart-observability, Deployment, otel-collector]
+  - [shopping-cart-observability, Deployment, loki-gateway]
+  - [shopping-cart-observability, StatefulSet, tempo]
+  - [shopping-cart-observability, StatefulSet, loki]
+  - [shopping-cart-observability, StatefulSet, prometheus-shopmon-prometheus]
+  - [shopping-cart-observability, StatefulSet, alertmanager-shopmon-alertmanager]
+  - [shopping-cart-observability, DaemonSet, fluent-bit]
+  - [shopping-cart-observability, DaemonSet, shopping-observability-prometheus-node-exporter]
+  - [shopping-cart-apps, Deployment, commerce-bff]
+  - [shopping-cart-apps, Deployment, account-service]
+  - [shopping-cart-apps, Deployment, seller-service]
+  - [shopping-cart-apps, Deployment, basket-service]
+  - [shopping-cart-apps, Deployment, product-catalog]
+  - [shopping-cart-apps, Deployment, order-service]
+  - [shopping-cart-payment, Deployment, payment-service]
+  - [shopping-cart-identity, Deployment, keycloak]
+  - [shopping-cart-apps, Deployment, frontend]
+dependencies:
+  - [shopping-cart-data, rabbitmq]
+  - [shopping-cart-data, redis-cart]
+  - [shopping-cart-data, postgresql-products]
+  - [shopping-cart-data, postgresql-orders]
+  - [shopping-cart-data, postgresql-payment]
+  - [shopping-cart-data, postgresql-marketplace]
+# S04/S07: unmanaged mesh is a prerequisite, not silently modified by deploy.
+mesh:
+  namespace: istio-system
+  configmap: istio
+  provider: shopping-otel
+  log_provider: shopping-safe-logs

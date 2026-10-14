@@ -1,0 +1,6 @@
+[
+  {"type": "order", "title": "Đơn hàng đang được chuẩn bị", "text": "Người bán đang đóng gói đơn hàng của bạn.", "minutesAgo": 35},
+  {"type": "promo", "title": "Voucher FREESHIP đã sẵn sàng", "text": "Áp dụng ở bước thanh toán, không giới hạn giá trị đơn.", "minutesAgo": 180},
+  {"type": "security", "title": "Đăng nhập từ thiết bị mới", "text": "Nếu không phải bạn, hãy đổi mật khẩu ngay.", "minutesAgo": 1440},
+  {"type": "order", "title": "Đơn hàng đã giao thành công", "text": "Hãy đánh giá sản phẩm để giúp người mua khác.", "minutesAgo": 2880}
+]

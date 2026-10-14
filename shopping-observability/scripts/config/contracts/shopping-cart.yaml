@@ -1,0 +1,73 @@
+# New requests are required each run. No previous evidence is an acceptance input.
+adapter: shopping-cart
+routes:
+  - id: frontend-http
+    method: GET
+    path: /
+    expected: [200]
+    response: html
+    authenticated: false
+    scope: mesh-http-only
+    services: [frontend.shopping-cart-apps]
+    logs: []
+    mesh_logs: [frontend]
+  - id: products
+    method: GET
+    path: /api/v2/products
+    expected: [200]
+    authenticated: false
+    services: [commerce-bff, product-catalog]
+    logs: [commerce-bff, product-catalog]
+    edges: [{from: commerce-bff, to: product-catalog, type: http}]
+    databases: [{service: product-catalog, system: postgresql}]
+  - id: accounts
+    method: GET
+    path: /api/v2/accounts/users
+    expected: [200]
+    authenticated: true
+    services: [commerce-bff, account-service, keycloak]
+    logs: [commerce-bff, account-service, keycloak]
+    edges: [{from: commerce-bff, to: account-service, type: http}]
+  - id: seller
+    method: GET
+    path: /api/v2/sellers/applications
+    expected: [200]
+    authenticated: true
+    services: [commerce-bff, seller-service]
+    logs: [commerce-bff, seller-service]
+    edges: [{from: commerce-bff, to: seller-service, type: http}]
+    databases: [{service: seller-service, system: postgresql}]
+  - id: cart
+    method: GET
+    path: /api/v2/cart
+    expected: [200]
+    authenticated: true
+    services: [commerce-bff, basket-service]
+    logs: [commerce-bff, basket-service]
+    edges: [{from: commerce-bff, to: basket-service, type: http}]
+    databases: [{service: basket-service, system: redis}]
+  - id: orders
+    method: GET
+    path: /api/v2/orders?customerId={user_id}
+    expected: [200]
+    authenticated: true
+    services: [commerce-bff, order-service]
+    logs: [commerce-bff, order-service]
+    edges: [{from: commerce-bff, to: order-service, type: http}]
+    databases: [{service: order-service, system: postgresql}]
+  - id: payment
+    method: GET
+    path: /api/v2/payments?customerId={user_id}
+    expected: [200]
+    authenticated: true
+    services: [commerce-bff, payment-service]
+    logs: [commerce-bff, payment-service]
+    edges: [{from: commerce-bff, to: payment-service, type: http}]
+    databases: [{service: payment-service, system: postgresql}]
+# The adapter generates isolated fixtures and saves cleanup intents BEFORE writes.
+checkout:
+  id: checkout
+  services: [commerce-bff, basket-service, order-service, product-catalog]
+  logs: [commerce-bff, basket-service, order-service, product-catalog]
+  databases: [{service: basket-service, system: redis}, {service: order-service, system: postgresql}]
+  edges: [{from: order-service, to: product-catalog, type: rabbitmq, relation: exact_parent}]

@@ -1,0 +1,5 @@
+[
+  {"id": "rt-seed-1", "userId": "seed", "orderRef": "ORD-7F3A21", "buyer": "Nguyễn Minh Anh", "shop": "Tech House", "reason": "DEFECTIVE", "note": "Tai nghe bị rè một bên.", "amount": 1290000, "status": "REQUESTED", "daysAgo": 1},
+  {"id": "rt-seed-2", "userId": "seed", "orderRef": "ORD-2B9C10", "buyer": "Trần Quốc Bảo", "shop": "Văn phòng phẩm An", "reason": "NOT_AS_DESCRIBED", "note": "Màu sổ khác ảnh.", "amount": 79000, "status": "APPROVED", "daysAgo": 3},
+  {"id": "rt-seed-3", "userId": "seed", "orderRef": "ORD-91D0AA", "buyer": "Lê Thu Hà", "shop": "Tech House", "reason": "CHANGED_MIND", "note": "Đổi ý, chưa mở hộp.", "amount": 459000, "status": "REJECTED", "daysAgo": 6}
+]

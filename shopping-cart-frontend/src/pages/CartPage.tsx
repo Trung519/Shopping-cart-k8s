@@ -6,21 +6,28 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { useCart, useRemoveCartItem, useUpdateCartItem } from '@/hooks/useCart'
 import { formatCurrency } from '@/utils/format'
 import type { CartItem } from '@/types'
+import VoucherBox from '@/components/mock/VoucherBox'
+import { useVoucherStore } from '@/stores/voucherStore'
+
+const FREE_SHIP_THRESHOLD = 299000
 
 export default function CartPage() {
   const cartQuery = useCart()
+  const applied = useVoucherStore((state) => state.applied)
   if (cartQuery.isLoading) return <div className="flex min-h-[60vh] items-center justify-center"><LoadingSpinner size="lg" /></div>
   if (cartQuery.isError) return <div className="market-container py-16 text-center text-primary-700">Không thể tải giỏ hàng.</div>
   const cart = cartQuery.data
   if (!cart || cart.items.length === 0) return <EmptyCart />
 
   const groups = groupByShop(cart.items)
+  const discount = applied?.discount ?? 0
+  const freeShipLeft = Math.max(0, FREE_SHIP_THRESHOLD - cart.totalAmount)
   return (
     <div className="market-container py-7 sm:py-10">
       <div className="mb-6 flex items-end justify-between"><div><p className="eyebrow">Đơn mua</p><h1 className="page-heading mt-1">Giỏ hàng của bạn</h1></div><p className="text-sm text-muted">{cart.items.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm</p></div>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-4">{Object.entries(groups).map(([shopName, items]) => <section key={shopName} className="surface-card overflow-hidden"><div className="flex items-center gap-2 border-b border-line bg-ground px-4 py-3 text-sm font-bold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600"><ShoppingBag className="h-4 w-4" /></span> {shopName}</div><div className="divide-y divide-line">{items.map((item) => <CartRow key={item.id} item={item} currency={cart.currency} />)}</div><div className="flex items-center gap-2 border-t border-line bg-ground px-4 py-3 text-xs text-muted"><Truck className="h-4 w-4 text-emerald" /> Phí và thời gian vận chuyển được xác nhận khi checkout.</div></section>)}</div>
-        <aside className="surface-card sticky top-28 p-5 sm:p-6"><h2 className="text-lg font-extrabold">Tóm tắt đơn hàng</h2><div className="mt-5 space-y-3 text-sm"><SummaryRow label="Tạm tính" value={formatCurrency(cart.totalAmount, cart.currency)} /><SummaryRow label="Phí vận chuyển" value="Tính ở bước sau" muted /><SummaryRow label="Giảm giá" value="Chưa áp dụng" muted /></div><div className="my-5 border-t border-line" /><div className="flex items-end justify-between"><span className="font-bold">Tổng thanh toán</span><span className="text-2xl font-bold text-price">{formatCurrency(cart.totalAmount, cart.currency)}</span></div><p className="mt-2 text-right text-xs text-muted">Đã bao gồm thuế nếu áp dụng</p><Link to="/checkout" className="focus-ring mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary-600 text-sm font-bold text-white transition hover:bg-primary-700">Tiến hành thanh toán</Link><div className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted"><ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-emerald" /> Giá và tồn kho sẽ được kiểm tra lại trước khi tạo đơn.</div></aside>
+        <div className="space-y-4"><div role="status" className={`flex items-center gap-2 rounded-card px-4 py-3 text-sm ${freeShipLeft === 0 ? 'bg-primary-50 text-primary-800' : 'bg-warning-soft text-warning'}`}><Truck className="h-4 w-4 flex-none" aria-hidden="true" />{freeShipLeft === 0 ? 'Đơn của bạn được miễn phí vận chuyển.' : `Mua thêm ${formatCurrency(freeShipLeft, cart.currency)} để được miễn phí vận chuyển.`}</div>{Object.entries(groups).map(([shopName, items]) => <section key={shopName} className="surface-card overflow-hidden"><div className="flex items-center gap-2 border-b border-line bg-ground px-4 py-3 text-sm font-bold"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600"><ShoppingBag className="h-4 w-4" /></span> {shopName}</div><div className="divide-y divide-line">{items.map((item) => <CartRow key={item.id} item={item} currency={cart.currency} />)}</div><div className="flex items-center gap-2 border-t border-line bg-ground px-4 py-3 text-xs text-muted"><Truck className="h-4 w-4 text-emerald" /> Phí và thời gian vận chuyển được xác nhận khi checkout.</div></section>)}</div>
+        <aside className="surface-card sticky top-28 p-5 sm:p-6"><h2 className="text-lg font-extrabold">Tóm tắt đơn hàng</h2><div className="mt-5"><VoucherBox subtotal={cart.totalAmount} /></div><div className="mt-5 space-y-3 text-sm"><SummaryRow label="Tạm tính" value={formatCurrency(cart.totalAmount, cart.currency)} /><SummaryRow label="Phí vận chuyển" value="Tính ở bước sau" muted /><SummaryRow label="Giảm giá (demo)" value={discount > 0 ? `-${formatCurrency(discount, cart.currency)}` : 'Chưa áp dụng'} muted={discount === 0} /></div><div className="my-5 border-t border-line" /><div className="flex items-end justify-between"><span className="font-bold">Tổng thanh toán</span><span className="text-2xl font-bold text-price">{formatCurrency(cart.totalAmount - discount, cart.currency)}</span></div><p className="mt-2 text-right text-xs text-muted">Đã bao gồm thuế nếu áp dụng</p><Link to="/checkout" className="focus-ring mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-primary-600 text-sm font-bold text-white transition hover:bg-primary-700">Tiến hành thanh toán</Link><div className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted"><ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-emerald" /> Giá và tồn kho sẽ được kiểm tra lại trước khi tạo đơn.</div></aside>
       </div>
     </div>
   )

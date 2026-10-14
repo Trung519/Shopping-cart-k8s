@@ -21,8 +21,7 @@ mvn clean package
 Docker compose up -d
 mvn spring-boot:run
 
-# Deploy manifests (requires shopping-cart-infra)
-kubectl apply -f k8s/
+# Deploy: managed by Argo CD (gitops/control-plane/services.yaml, app order-service)
 ```
 
 ### Environment Variables

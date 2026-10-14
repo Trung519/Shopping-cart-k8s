@@ -1,0 +1,10 @@
+apiVersion: v2
+name: basket-service
+description: Shopping cart basket service Helm chart
+type: application
+version: 1.0.2
+appVersion: "1.4.2"
+dependencies:
+  - name: shopping-app
+    version: 0.1.0
+    repository: file://../../library/shopping-app

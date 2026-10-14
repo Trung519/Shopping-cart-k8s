@@ -10,49 +10,49 @@ spec:
     - list:
         elements:
           - name: frontend
-            chartPath: shopping-cart-frontend/helmchart
+            chartPath: charts/apps/frontend
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/20-frontend.yaml
           - name: basket-service
-            chartPath: shopping-cart-basket/helmchart
+            chartPath: charts/apps/basket-service
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/21-basket-service.yaml
           - name: product-catalog
-            chartPath: shopping-cart-product-catalog/helmchart
+            chartPath: charts/apps/product-catalog
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/22-product-catalog.yaml
           - name: order-service
-            chartPath: shopping-cart-order/helmchart
+            chartPath: charts/apps/order-service
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/23-order-service.yaml
           - name: payment-service
-            chartPath: shopping-cart-payment/helmchart
+            chartPath: charts/apps/payment-service
             namespace: shopping-cart-payment
             valuesPath: config-secret-secure/values/local/24-payment-service.yaml
           - name: commerce-bff
-            chartPath: commerce-bff/helmchart
+            chartPath: charts/apps/commerce-bff
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/25-commerce-bff.yaml
           - name: account-service
-            chartPath: account-service/helmchart
+            chartPath: charts/apps/account-service
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/26-account-service.yaml
           - name: seller-service
-            chartPath: seller-service/helmchart
+            chartPath: charts/apps/seller-service
             namespace: shopping-cart-apps
             valuesPath: config-secret-secure/values/local/27-seller-service.yaml
           - name: shopping-integration
-            chartPath: shopping-integration/helmchart
+            chartPath: charts/platform/shopping-integration
             namespace: shopping-cart-data
             valuesPath: config-secret-secure/values/local/10-shopping-integration.yaml
           - name: shopping-cart-security
-            chartPath: shopping-cart-security/helmchart
+            chartPath: charts/platform/shopping-cart-security
             namespace: shopping-cart-apps
-            valuesPath: shopping-cart-security/helmchart/values.yaml
+            valuesPath: config-secret-secure/values/local/11-shopping-cart-security.yaml
           - name: shopping-observability
-            chartPath: shopping-observability/helmchart
+            chartPath: charts/platform/shopping-observability
             namespace: shopping-cart-observability
-            valuesPath: shopping-observability/helmchart/values.yaml
+            valuesPath: config-secret-secure/values/local/12-shopping-observability.yaml
   template:
     metadata:
       name: '{{.name}}'
@@ -68,7 +68,6 @@ spec:
           helm:
             releaseName: '{{.name}}'
             valueFiles:
-              - $values/config-secret-secure/values/local/00-global.yaml
               - '$values/{{.valuesPath}}'
         - repoURL: https://github.com/Trung519/Shopping-cart-k8s.git
           targetRevision: dev

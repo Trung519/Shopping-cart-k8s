@@ -147,9 +147,8 @@ publisher.publish("events", "inventory.updated", event.model_dump_json_for_rabbi
 
 ## Related Documentation
 
-- [Message Schemas](../shopping-cart-infra/docs/message-schemas.md) - Event contracts
-- [RabbitMQ Operations](../shopping-cart-infra/docs/rabbitmq-operations.md) - Queue management
-- [rabbitmq-client-library](../rabbitmq-client-library/README.md) - Client library docs
+- [Message Schemas](../shopping-integration/docs/message-schemas.md) - Event contracts
+- [rabbitmq-client-library](../rabbitmq-client-java/README.md) - Client library docs
 
 ## Troubleshooting
 

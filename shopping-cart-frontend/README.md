@@ -142,8 +142,8 @@ docker run -p 3000:80 shopping-cart-frontend:v1.0.0
 
 ### Kubernetes Deployment
 ```bash
-helm lint helmchart -f ../config-secret-secure/values/local/20-frontend.yaml
-helm upgrade --install frontend helmchart \
+helm lint ../charts/apps/frontend -f ../config-secret-secure/values/local/20-frontend.yaml
+helm upgrade --install frontend ../charts/apps/frontend \
   --namespace shopping-cart-apps \
   -f ../config-secret-secure/values/local/20-frontend.yaml
 ```

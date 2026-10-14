@@ -1,0 +1,5 @@
+[
+  {"type": "order", "title": "Đơn hàng đã được xác nhận", "text": "Người bán đã xác nhận đơn của bạn."},
+  {"type": "promo", "title": "Flash sale bắt đầu", "text": "Giảm đến 30% cho phụ kiện công nghệ trong 1 giờ tới."},
+  {"type": "order", "title": "Đơn vị vận chuyển đã nhận hàng", "text": "Đơn hàng đang trên đường đến bạn."}
+]

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["namespace", "gatewayPrincipal"],
+  "properties": {
+    "namespace": {"type": "string", "minLength": 1},
+    "gatewayPrincipal": {"type": "string", "pattern": "^[^/]+/ns/[^/]+/sa/[^/]+$"}
+  }
+}

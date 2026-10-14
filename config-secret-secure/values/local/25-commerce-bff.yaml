@@ -1,33 +1,5 @@
 namespaceOverride: shopping-cart-apps
-replicaCount: 1
 image:
-  repository: commerce-bff
   tag: v0.1.6-otel-20261003
-  pullPolicy: IfNotPresent
 config:
-  PUBLIC_URL: http://shopping-cart.localhost:8080
-  FRONTEND_URL: http://shopping-cart.localhost:8080
-  COOKIE_SECURE: 'false'
-  OIDC_ISSUER_INTERNAL: http://keycloak.shopping-cart-identity.svc.cluster.local/realms/shopping-cart
-  OIDC_AUTHORIZE_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/auth
-  OIDC_END_SESSION_URL: http://keycloak.localhost:8080/realms/shopping-cart/protocol/openid-connect/logout
-  OIDC_CLIENT_ID: commerce-bff
-  OIDC_REDIRECT_URL: http://shopping-cart.localhost:8080/api/v2/auth/callback
-  PRODUCT_CATALOG_URL: http://product-catalog.shopping-cart-apps.svc.cluster.local
-  BASKET_URL: http://basket-service.shopping-cart-apps.svc.cluster.local:8083
-  ORDER_URL: http://order-service.shopping-cart-apps.svc.cluster.local
-  PAYMENT_URL: http://payment-service.shopping-cart-payment.svc.cluster.local
-  ACCOUNT_URL: http://account-service.shopping-cart-apps.svc.cluster.local
-  SELLER_URL: http://seller-service.shopping-cart-apps.svc.cluster.local
-  OTEL_SERVICE_NAME: commerce-bff
-  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.shopping-cart-observability.svc.cluster.local:4318
-  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
-  OTEL_RESOURCE_ATTRIBUTES: service.namespace=shopping-cart,deployment.environment=local
-  OTEL_TRACES_SAMPLER: always_on
-  OTEL_SDK_DISABLED: 'false'
-  OTEL_METRICS_EXPORTER: none
-  OTEL_LOGS_EXPORTER: none
-  OTEL_BSP_MAX_QUEUE_SIZE: '512'
-  OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '128'
-  OTEL_BSP_SCHEDULE_DELAY: '1000'
-  OTEL_PROPAGATORS: tracecontext
+  MOCK_API_ENABLED: 'true'

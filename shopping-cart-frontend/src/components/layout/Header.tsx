@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, Heart, LogOut, Menu, Search, ShoppingCart } from 'lucide-react'
+import { Bell, ChevronDown, Heart, LogOut, Menu, Search, ShoppingCart } from 'lucide-react'
 import { useAppAuth } from '@/contexts/AuthContext'
+import { useMockNotifications } from '@/hooks/useMock'
 import { useCartStore } from '@/stores/cartStore'
 import { useWishlistStore } from '@/stores/wishlistStore'
 
@@ -21,6 +22,7 @@ export default function Header() {
   const itemCount = useCartStore((state) => state.itemCount)
   const clearCart = useCartStore((state) => state.clearCart)
   const wishlistCount = useWishlistStore((state) => state.productIds.length)
+  const unread = useMockNotifications().data?.unread ?? 0
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault()
@@ -69,6 +71,12 @@ export default function Header() {
             <Heart className="h-[22px] w-[22px]" />
             {wishlistCount > 0 && <Counter value={wishlistCount} />}
           </Link>
+          {auth.isAuthenticated && (
+            <Link to="/buyer/notifications" className="focus-ring relative flex h-11 w-11 items-center justify-center rounded-md text-slate-700 hover:bg-ground" aria-label={`Thông báo${unread > 0 ? `, ${unread} chưa đọc` : ''}`} title="Thông báo">
+              <Bell className="h-[22px] w-[22px]" />
+              {unread > 0 && <Counter value={unread} />}
+            </Link>
+          )}
           <Link to={auth.isAuthenticated ? '/cart' : '/login'} className="focus-ring relative flex h-11 w-11 items-center justify-center rounded-md text-slate-700 hover:bg-ground" aria-label={`Giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ''}`} title="Giỏ hàng">
             <ShoppingCart className="h-[22px] w-[22px]" />
             {itemCount > 0 && <Counter value={itemCount} />}

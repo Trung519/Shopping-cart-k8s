@@ -1,0 +1,5 @@
+[
+  {"id": "st-1", "shop": "Tech House", "period": "Tuần 40/2026", "gross": 18450000, "commission": 922500, "net": 17527500, "status": "PENDING"},
+  {"id": "st-2", "shop": "Văn phòng phẩm An", "period": "Tuần 40/2026", "gross": 6210000, "commission": 310500, "net": 5899500, "status": "PENDING"},
+  {"id": "st-3", "shop": "Thời trang Mộc", "period": "Tuần 39/2026", "gross": 9800000, "commission": 490000, "net": 9310000, "status": "PAID"}
+]

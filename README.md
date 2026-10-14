@@ -7,19 +7,19 @@ This repository collects the local shopping cart source projects into a single r
 - `shopping-cart-frontend`: frontend application.
 - `shopping-cart-basket`, `shopping-cart-product-catalog`, `shopping-cart-order`, `shopping-cart-payment`: shopping services.
 - `account-service`, `seller-service`, `commerce-bff`: marketplace services.
-- `shopping-integration`: integration Helm chart and local deployment scripts.
-- `shopping-cart-infra`: infrastructure scripts and existing Argo CD application definitions.
-- `shopping-cart-security`, `shopping-observability`: security and observability charts.
-- `config-secret-secure`: deployment values and Vault policies.
-- `rabbitmq-client-java`: shared Java RabbitMQ client.
+- `shopping-integration`: local deployment scripts, runbooks and RabbitMQ event contracts.
+- `shopping-observability`: observability docs, SRE scripts and chart tests.
+- `charts`: every Helm chart in the repository — `charts/apps/<release>` for application services, `charts/platform/<release>` for integration, security and observability. See [charts/README.md](charts/README.md).
+- `config-secret-secure`: per-release Helm values.
+- `rabbitmq-client-java`: shared Java RabbitMQ client (built locally by `full-system-test.sh`).
 - `shopping-performance`: performance testing tools.
-- `jenkinsfile`: existing Jenkins pipeline.
+- `gitops`: Argo CD root Application and ApplicationSet.
 
-See each component's README for details. This is a source snapshot, not a verified migration of the existing deployment pipelines to this monorepo. Existing Git URLs and relative chart paths in Argo CD definitions still refer to the original repositories and need adjustment before use with this repository.
+See each component's README for details.
 
 ## Argo CD for this monorepo
 
-The new [GitOps setup](gitops/README.md) uses one root Application and an ApplicationSet catalog for the existing charts. All workload Applications start with manual sync. Review these local changes before pushing and bootstrapping; the legacy definitions under `shopping-cart-infra/argocd/` remain separate.
+The [GitOps setup](gitops/README.md) uses one root Application and an ApplicationSet catalog for the charts above. All workload Applications start with manual sync.
 
 ## Credentials and generated files
 

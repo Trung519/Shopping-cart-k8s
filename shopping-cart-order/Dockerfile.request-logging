@@ -1,0 +1,10 @@
+FROM shopping-cart-order:v1.1.1-tracing-errorfix-20261003 AS baseline
+FROM eclipse-temurin:21-jdk-alpine AS compiler
+COPY --from=baseline /app/BOOT-INF/lib/ /libs/
+COPY src/main/java/com/shoppingcart/order/config/RequestCompletionLoggingFilter.java /src/RequestCompletionLoggingFilter.java
+RUN javac -J-Xmx192m -cp '/libs/*' -d /compiled /src/RequestCompletionLoggingFilter.java
+COPY tests/RequestLoggingAcceptance.java /tests/RequestLoggingAcceptance.java
+RUN javac -J-Xmx128m -cp '/libs/*:/compiled' -d /tests /tests/RequestLoggingAcceptance.java \
+    && java -Xmx128m -cp '/libs/*:/compiled:/tests' RequestLoggingAcceptance com.shoppingcart.order.config.RequestCompletionLoggingFilter
+FROM baseline
+COPY --from=compiler --chown=1001:1001 /compiled/com/shoppingcart/order/config/ /app/BOOT-INF/classes/com/shoppingcart/order/config/

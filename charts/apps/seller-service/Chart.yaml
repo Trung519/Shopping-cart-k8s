@@ -1,0 +1,10 @@
+apiVersion: v2
+name: seller-service
+description: ShopCart seller onboarding and shop lifecycle service
+type: application
+version: 0.1.2
+appVersion: "0.1.2"
+dependencies:
+  - name: shopping-app
+    version: 0.1.0
+    repository: file://../../library/shopping-app

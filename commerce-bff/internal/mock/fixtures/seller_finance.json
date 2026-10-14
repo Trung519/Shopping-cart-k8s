@@ -1,0 +1,15 @@
+{
+  "commissionRate": 0.05,
+  "transactions": [
+    {"id": "TX-9001", "type": "SALE", "ref": "SO-1006", "amount": 747000, "daysAgo": 3},
+    {"id": "TX-9002", "type": "COMMISSION", "ref": "SO-1006", "amount": -37350, "daysAgo": 3},
+    {"id": "TX-9003", "type": "SALE", "ref": "SO-1005", "amount": 429000, "daysAgo": 1},
+    {"id": "TX-9004", "type": "COMMISSION", "ref": "SO-1005", "amount": -21450, "daysAgo": 1},
+    {"id": "TX-9005", "type": "REFUND", "ref": "SO-0998", "amount": -249000, "daysAgo": 5}
+  ],
+  "availableBalance": 5200000,
+  "pendingBalance": 1118000,
+  "seedPayouts": [
+    {"id": "PO-001", "amount": 3000000, "status": "COMPLETED", "daysAgo": 9}
+  ]
+}

@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import yaml
 
-fragment=yaml.safe_load((Path(__file__).parent/'helmchart/files/istio-tracing-provider.yaml').read_text())
+fragment=yaml.safe_load((Path(__file__).resolve().parents[1]/'charts/platform/shopping-observability/files/istio-tracing-provider.yaml').read_text())
 k=['kubectl','--context','k3d-lab-k8s','-n','istio-system']
 cm=json.loads(subprocess.check_output(k+['get','configmap','istio','-o','json'],text=True))
 mesh=yaml.safe_load(cm['data']['mesh'])

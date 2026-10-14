@@ -24,7 +24,17 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminSellersPage from './pages/admin/AdminSellersPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
 import AdminCategoriesPage from './pages/admin/AdminCategoriesPage'
-import WorkspacePlaceholderPage from './pages/WorkspacePlaceholderPage'
+import AddressesPage from './pages/buyer/AddressesPage'
+import SellerOrdersPage from './pages/seller/SellerOrdersPage'
+import SellerInventoryPage from './pages/seller/SellerInventoryPage'
+import SellerPromotionsPage from './pages/seller/SellerPromotionsPage'
+import SellerMessagesPage from './pages/seller/SellerMessagesPage'
+import SellerFinancePage from './pages/seller/SellerFinancePage'
+import SellerSettingsPage from './pages/seller/SellerSettingsPage'
+import AdminReturnsPage from './pages/admin/AdminReturnsPage'
+import AdminFinancePage from './pages/admin/AdminFinancePage'
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
+import AdminAuditPage from './pages/admin/AdminAuditPage'
 import SupportPage from './pages/SupportPage'
 import OperationsDemo from './pages/admin/OperationsDemo'
 import ShopDemoApp from './demo/buyer/ShopDemoApp'
@@ -80,19 +90,19 @@ function App() {
           <Route index element={<BuyerOverviewPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="addresses" element={<WorkspacePlaceholderPage />} />
+          <Route path="addresses" element={<AddressesPage />} />
         </Route>
         <Route path="seller" element={<ProtectedRoute><WorkspaceLayout kind="seller" /></ProtectedRoute>}>
           <Route index element={<SellerDashboardPage />} />
           <Route path="products" element={<ProtectedRoute requiredRoles={['seller-owner', 'seller-manager', 'seller-staff']}><SellerProductsPage /></ProtectedRoute>} />
           <Route path="products/new" element={<ProtectedRoute requiredRoles={['seller-owner', 'seller-manager']}><ProductAdminPage /></ProtectedRoute>} />
           <Route path="products/:id/edit" element={<ProtectedRoute requiredRoles={['seller-owner', 'seller-manager']}><ProductAdminPage /></ProtectedRoute>} />
-          <Route path="inventory" element={<WorkspacePlaceholderPage />} />
-          <Route path="orders" element={<WorkspacePlaceholderPage />} />
-          <Route path="promotions" element={<WorkspacePlaceholderPage />} />
-          <Route path="messages" element={<WorkspacePlaceholderPage />} />
-          <Route path="finance" element={<WorkspacePlaceholderPage />} />
-          <Route path="settings" element={<WorkspacePlaceholderPage />} />
+          <Route path="inventory" element={<SellerInventoryPage />} />
+          <Route path="orders" element={<SellerOrdersPage />} />
+          <Route path="promotions" element={<SellerPromotionsPage />} />
+          <Route path="messages" element={<SellerMessagesPage />} />
+          <Route path="finance" element={<SellerFinancePage />} />
+          <Route path="settings" element={<SellerSettingsPage />} />
         </Route>
         <Route path="admin" element={<ProtectedRoute requiredRoles={['admin', 'platform-admin', 'cart-admin', 'user-admin', 'seller-reviewer', 'catalog-moderator', 'order-operator', 'finance-operator', 'support-agent']}><WorkspaceLayout kind="admin" /></ProtectedRoute>}>
           <Route index element={<AdminDashboardPage />} />
@@ -102,10 +112,10 @@ function App() {
           <Route path="products/:id/edit" element={<ProductAdminPage />} />
           <Route path="catalog" element={<ProtectedRoute requiredRoles={['admin', 'platform-admin', 'cart-admin', 'catalog-admin']}><AdminCategoriesPage /></ProtectedRoute>} />
           <Route path="orders" element={<AdminOrdersPage />} />
-          <Route path="returns" element={<WorkspacePlaceholderPage />} />
-          <Route path="finance" element={<WorkspacePlaceholderPage />} />
-          <Route path="analytics" element={<WorkspacePlaceholderPage />} />
-          <Route path="audit" element={<WorkspacePlaceholderPage />} />
+          <Route path="returns" element={<AdminReturnsPage />} />
+          <Route path="finance" element={<AdminFinancePage />} />
+          <Route path="analytics" element={<AdminAnalyticsPage />} />
+          <Route path="audit" element={<AdminAuditPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

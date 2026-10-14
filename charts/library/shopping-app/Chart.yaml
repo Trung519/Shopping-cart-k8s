@@ -1,0 +1,5 @@
+apiVersion: v2
+name: shopping-app
+description: Shared helpers and standard resources for Shopping Cart application charts
+type: library
+version: 0.1.0

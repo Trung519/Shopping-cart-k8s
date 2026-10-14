@@ -1,9 +1,9 @@
 # Shopping Cart Secure Configuration
 
-This private repository stores Helm value overlays and Vault policy definitions.
+This folder stores Helm value overlays. The `shopping-cart-eso` Vault policy is written by `shopping-integration/scripts/bootstrap-vault.sh`.
 It never stores plaintext application credentials, Vault tokens, or unseal keys.
 
-Values are applied in order: `00-global.yaml`, then the release-specific file.
+Each release applies its chart defaults, then its release-specific file under `values/local/`.
 Vault initialization material is stored in macOS Keychain by the bootstrap scripts
 from the `shopping-integration` repository.
 

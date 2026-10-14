@@ -1,0 +1,570 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "minLength": 1,
+      "default": "k3d-lab-k8s"
+    },
+    "repo_root": {
+      "type": "string",
+      "minLength": 1,
+      "default": "auto"
+    },
+    "argo_namespace": {
+      "type": "string",
+      "minLength": 1,
+      "default": "argocd"
+    },
+    "obs_namespace": {
+      "type": "string",
+      "minLength": 1,
+      "default": "shopping-cart-observability"
+    },
+    "obs_app": {
+      "type": "string",
+      "minLength": 1,
+      "default": "shopping-observability"
+    },
+    "repo_url": {
+      "type": "string",
+      "minLength": 1,
+      "default": "https://github.com/Trung519/Shopping-cart-k8s.git"
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1,
+      "default": "dev"
+    },
+    "sync_mode": {
+      "type": "string",
+      "minLength": 1,
+      "default": "selected"
+    },
+    "allow_test_writes": {
+      "type": "boolean",
+      "default": false
+    },
+    "contract": {
+      "type": "string",
+      "minLength": 1,
+      "default": "config/contracts/shopping-cart.yaml"
+    },
+    "timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1800
+    },
+    "step_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 300
+    },
+    "telemetry_wait": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 180
+    },
+    "rollback_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 900
+    },
+    "plan_ttl": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1800
+    },
+    "stability_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 120
+    },
+    "min_memory_mib": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1024
+    },
+    "vm_memory_command": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "default": "rdctl"
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart-gateway"
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "default": "nginx-gateway-istio"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 80
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1,
+          "default": "http://shopping-cart.localhost:8080"
+        },
+        "allowed_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "default": "shopping-cart.localhost"
+          }
+        }
+      },
+      "required": [
+        "namespace",
+        "service",
+        "port",
+        "base_url",
+        "allowed_hosts"
+      ]
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart-identity"
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "default": "keycloak"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 80
+        },
+        "secret": {
+          "type": "string",
+          "minLength": 1,
+          "default": "keycloak-secrets"
+        },
+        "username_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "KEYCLOAK_ADMIN"
+        },
+        "password_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "KEYCLOAK_ADMIN_PASSWORD"
+        },
+        "realm": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "default": "platform-admin"
+        }
+      },
+      "required": [
+        "namespace",
+        "service",
+        "port",
+        "secret",
+        "username_key",
+        "password_key",
+        "realm",
+        "role"
+      ]
+    },
+    "grafana": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopmon-grafana"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 80
+        },
+        "secret": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopmon-grafana-admin"
+        },
+        "username_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "admin-user"
+        },
+        "password_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "admin-password"
+        }
+      },
+      "required": [
+        "service",
+        "port",
+        "secret",
+        "username_key",
+        "password_key"
+      ]
+    },
+    "backends": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prometheus": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "default": "shopmon-prometheus"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 9090
+            }
+          },
+          "required": [
+            "service",
+            "port"
+          ]
+        },
+        "loki": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "default": "loki-gateway"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 80
+            }
+          },
+          "required": [
+            "service",
+            "port"
+          ]
+        },
+        "tempo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "default": "tempo"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3200
+            }
+          },
+          "required": [
+            "service",
+            "port"
+          ]
+        },
+        "collector": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "default": "otel-collector"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 4318
+            }
+          },
+          "required": [
+            "service",
+            "port"
+          ]
+        },
+        "alertmanager": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "default": "shopmon-alertmanager"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 9093
+            }
+          },
+          "required": [
+            "service",
+            "port"
+          ]
+        }
+      },
+      "required": [
+        "prometheus",
+        "loki",
+        "tempo",
+        "collector",
+        "alertmanager"
+      ]
+    },
+    "required_jobs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "default": "istio-envoy"
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart-data"
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "default": "rabbitmq-management"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 15672
+        },
+        "secret": {
+          "type": "string",
+          "minLength": 1,
+          "default": "rabbitmq-credentials"
+        },
+        "username_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "username"
+        },
+        "password_key": {
+          "type": "string",
+          "minLength": 1,
+          "default": "password"
+        },
+        "vhost": {
+          "type": "string",
+          "minLength": 1,
+          "default": "/"
+        },
+        "required_queue": {
+          "type": "string",
+          "minLength": 1,
+          "default": "inventory.order-created"
+        },
+        "producer": {
+          "type": "string",
+          "minLength": 1,
+          "default": "order-service"
+        },
+        "consumer": {
+          "type": "string",
+          "minLength": 1,
+          "default": "product-catalog"
+        }
+      },
+      "required": [
+        "namespace",
+        "service",
+        "port",
+        "secret",
+        "username_key",
+        "password_key",
+        "vhost",
+        "required_queue",
+        "producer",
+        "consumer"
+      ]
+    },
+    "redis_server_metrics_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "redis_job": {
+      "type": "string",
+      "minLength": 1,
+      "default": "redis"
+    },
+    "controlled_receiver_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notification_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "required_alerts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "default": "ShoppingTracingTargetDown"
+      }
+    },
+    "managed_apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "default": "shopping-observability"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "default": "ConfigMap"
+              }
+            }
+          }
+        },
+        "required": [
+          "name",
+          "resources"
+        ]
+      }
+    },
+    "workloads": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart-observability"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-cart-data"
+        }
+      }
+    },
+    "mesh": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "default": "istio-system"
+        },
+        "configmap": {
+          "type": "string",
+          "minLength": 1,
+          "default": "istio"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-otel"
+        },
+        "log_provider": {
+          "type": "string",
+          "minLength": 1,
+          "default": "shopping-safe-logs"
+        }
+      },
+      "required": [
+        "namespace",
+        "configmap",
+        "provider",
+        "log_provider"
+      ]
+    }
+  },
+  "required": [
+    "context",
+    "repo_root",
+    "argo_namespace",
+    "obs_namespace",
+    "obs_app",
+    "repo_url",
+    "branch",
+    "sync_mode",
+    "allow_test_writes",
+    "contract",
+    "timeout",
+    "step_timeout",
+    "telemetry_wait",
+    "rollback_timeout",
+    "plan_ttl",
+    "stability_seconds",
+    "min_memory_mib",
+    "vm_memory_command",
+    "gateway",
+    "auth",
+    "grafana",
+    "backends",
+    "required_jobs",
+    "rabbitmq",
+    "redis_server_metrics_required",
+    "redis_job",
+    "controlled_receiver_url",
+    "notification_required",
+    "required_alerts",
+    "managed_apps",
+    "workloads",
+    "dependencies",
+    "mesh"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Effective observability deployment configuration",
+  "description": "Runtime validation uses Python; PyYAML is the only dependency. User override YAML is merged into the profile before validation."
+}

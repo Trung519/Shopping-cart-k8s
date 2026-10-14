@@ -265,7 +265,8 @@ k8s-build: docker-build ## Build and tag for Kubernetes
 
 k8s-deploy: ## Deploy to Kubernetes (k3s)
 	@echo "${BLUE}Deploying to Kubernetes...${NC}"
-	helm upgrade --install product-catalog helmchart --namespace shopping-cart-apps -f ../config-secret-secure/values/local/22-product-catalog.yaml
+	helm dependency build ../charts/apps/product-catalog
+	helm upgrade --install product-catalog ../charts/apps/product-catalog --namespace shopping-cart-apps -f ../config-secret-secure/values/local/22-product-catalog.yaml
 	@echo "${GREEN}Deployment complete${NC}"
 
 k8s-delete: ## Delete from Kubernetes
