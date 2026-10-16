@@ -1,3 +1,4 @@
 namespaceOverride: shopping-cart-apps
+replicaCount: 4
 image:
   tag: redesign-v1.0.0

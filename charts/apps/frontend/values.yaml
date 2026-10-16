@@ -101,3 +101,22 @@ destinationRule:
     interval: 10s
     baseEjectionTime: 30s
     maxEjectionPercent: 50
+  loadBalancer:
+    consistentHash:
+      httpCookie:
+        name: fe-sticky
+        path: /
+        ttl: 3600s
+
+# Rollout plan
+rollout:
+  strategy: canary
+  canary:
+    steps:
+      - setWeight: 25
+      - pause: {}
+      - setWeight: 50
+      - pause: {}
+  blueGreen:
+    scaleDownDelaySeconds: 600
+    previewReplicaCount: 2
