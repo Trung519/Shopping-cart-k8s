@@ -1,0 +1,4 @@
+# Local environment overrides for charts/platform/shopping-cart-security.
+# Intentionally empty: the chart defaults are the local configuration
+# (equivalent to the pre-refactor valuesPath that pointed at the chart's own values.yaml).
+{}
