@@ -3,3 +3,10 @@ gateway:
   hosts:
     applicationAliases:
     - localhost
+postgresql:
+  orders:
+    pgpool:
+      replicas: 1
+  products:
+    pgpool:
+      replicas: 1

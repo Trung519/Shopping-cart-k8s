@@ -15,6 +15,21 @@ The root Application reads only `gitops/control-plane`, so it cannot recursively
 
 All Applications use **manual sync**. Creating or updating an Application does not deploy its workload. There is no automated prune or cascade-delete finalizer. The ApplicationSet uses `create-update` and `preserveResourcesOnDeletion: true`: removing a catalog entry does not clean up its existing Application; decommissioning requires an explicit separate decision. Applications remain owned by the ApplicationSet through Kubernetes owner references, so deleting the ApplicationSet itself may delete those Application objects, but preserved workloads are not cascade-deleted by an Argo finalizer.
 
+## Dựng cluster mới
+
+Chạy từ thư mục gốc repo sau khi review và đưa thay đổi lên `dev`:
+
+```bash
+k3d cluster create --config k3d/lab-k8s.yaml
+shopping-integration/scripts/install-platform.sh
+shopping-integration/scripts/bootstrap-vault.sh
+kubectl --context k3d-lab-k8s apply -f gitops/bootstrap/root-app.yaml
+```
+
+Khi chuyển dữ liệu từ cluster cũ, khôi phục PV/PVC trước khi cài nền tảng và chạy `VAULT_RESTORE_ONLY=1 shopping-integration/scripts/bootstrap-vault.sh` để tránh init lại Vault. Các script mặc định dùng `KUBE_CONTEXT=k3d-lab-k8s`.
+
+Sync root thủ công để tạo các Application con. Sync `shopping-integration` trước, sau đó `shopping-cart-security`, `shopping-observability`, `frontend` và các service còn lại; giữ manual sync và không bật Prune trong lúc chuyển cluster.
+
 ## Review locally first
 
 Run from the repository root (Python 3, Ruby standard YAML library and Helm are required):

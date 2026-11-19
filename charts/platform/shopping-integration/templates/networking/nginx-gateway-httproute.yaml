@@ -21,25 +21,6 @@ spec:
   rules:
     - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.bff.path }}}}]
       backendRefs: [{name: {{ .Values.gateway.routes.bff.service }}, port: {{ .Values.gateway.routes.bff.port }}}]
-    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.products.path }}}}]
-      backendRefs: [{name: {{ .Values.gateway.routes.products.service }}, port: {{ .Values.gateway.routes.products.port }}}]
-    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.orders.path }}}}]
-      backendRefs: [{name: {{ .Values.gateway.routes.orders.service }}, port: {{ .Values.gateway.routes.orders.port }}}]
-    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.cart.path }}}}]
-      filters:
-        - type: URLRewrite
-          urlRewrite: {path: {type: ReplacePrefixMatch, replacePrefixMatch: {{ .Values.gateway.routes.cart.rewrite }}}}
-      backendRefs: [{name: {{ .Values.gateway.routes.cart.service }}, port: {{ .Values.gateway.routes.cart.port }}}]
-    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.auth.path }}}}]
-      backendRefs: [{name: {{ .Values.gateway.routes.auth.service }}, port: {{ .Values.gateway.routes.auth.port }}}]
-    - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.payment.path }}}}]
-      filters:
-        - type: URLRewrite
-          urlRewrite: {path: {type: ReplacePrefixMatch, replacePrefixMatch: {{ .Values.gateway.routes.payment.rewrite }}}}
-      backendRefs:
-        - name: {{ .Values.gateway.routes.payment.service }}
-          namespace: {{ .Values.gateway.routes.payment.namespace }}
-          port: {{ .Values.gateway.routes.payment.port }}
     - matches: [{path: {type: PathPrefix, value: {{ .Values.gateway.routes.frontend.path }}}}]
       backendRefs: [{name: {{ .Values.gateway.routes.frontend.service }}, port: {{ .Values.gateway.routes.frontend.port }}}]
 ---

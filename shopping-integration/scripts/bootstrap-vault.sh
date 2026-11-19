@@ -16,6 +16,10 @@ status_json="$(kubectl --context "$CONTEXT" exec -n vault vault-0 -- vault statu
 initialized="$(jq -r '.initialized // false' <<<"$status_json")"
 
 if [[ "$initialized" != "true" ]]; then
+  if [[ "${VAULT_RESTORE_ONLY:-0}" == "1" ]]; then
+    echo "Vault is not initialized; restore-only mode refuses initialization and Keychain writes." >&2
+    exit 1
+  fi
   init_json="$(kubectl --context "$CONTEXT" exec -n vault vault-0 -- vault operator init -key-shares=1 -key-threshold=1 -format=json)"
   unseal_key="$(jq -r '.unseal_keys_b64[0]' <<<"$init_json")"
   root_token="$(jq -r '.root_token' <<<"$init_json")"
@@ -36,9 +40,7 @@ fi
 vault_exec "$root_token" secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
 vault_exec "$root_token" auth enable kubernetes >/dev/null 2>&1 || true
 vault_exec "$root_token" write auth/kubernetes/config \
-  kubernetes_host=https://kubernetes.default.svc:443 \
-  token_reviewer_jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token \
-  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt >/dev/null
+  kubernetes_host=https://kubernetes.default.svc:443 >/dev/null
 
 policy='path "secret/data/shopping-cart/*" { capabilities = ["read"] }
 path "secret/metadata/shopping-cart/*" { capabilities = ["read", "list"] }'

@@ -9,7 +9,11 @@ extraVolumes:
 - name: otel-agent
   emptyDir:
     sizeLimit: 32Mi
+- name: tmp
+  emptyDir: {}
 extraVolumeMounts:
 - name: otel-agent
   mountPath: /otel
   readOnly: true
+- name: tmp
+  mountPath: /tmp

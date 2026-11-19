@@ -328,29 +328,6 @@ gateway:
       path: /
       service: frontend
       port: 80
-    products:
-      path: /api/products
-      service: product-catalog
-      port: 80
-    orders:
-      path: /api/orders
-      service: order-service
-      port: 80
-    cart:
-      path: /api/cart
-      rewrite: /api/v1/cart
-      service: basket-service
-      port: 8083
-    auth:
-      path: /api/auth
-      service: basket-service
-      port: 8083
-    payment:
-      path: /api/payments
-      rewrite: /api/v1/payments
-      service: payment-service
-      namespace: shopping-cart-payment
-      port: 80
 meshSecurity:
   enabled: true
   mode: STRICT

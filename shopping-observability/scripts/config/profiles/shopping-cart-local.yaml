@@ -22,7 +22,8 @@ plan_ttl: 1800
 stability_seconds: 120
 # S01/S07: VM free-memory floor plus surge check. Never auto-add swap.
 min_memory_mib: 1024
-vm_memory_command: [rdctl, shell, cat, /proc/meminfo]
+# Runtime-neutral: containers read the Linux VM's /proc/meminfo (OrbStack, Colima or Rancher).
+vm_memory_command: [docker, run, --rm, alpine:3.22, cat, /proc/meminfo]
 # S03/S08: access real gateway through an owned random local tunnel.
 gateway:
   namespace: shopping-cart-gateway

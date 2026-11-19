@@ -1,4 +1,6 @@
-# Local environment overrides for charts/platform/shopping-observability.
-# Intentionally empty: the chart defaults are the local configuration
-# (equivalent to the pre-refactor valuesPath that pointed at the chart's own values.yaml).
-{}
+# Keep Loki data when the lab sleeps or the StatefulSet is deleted.
+loki:
+  singleBinary:
+    persistence:
+      whenDeleted: Retain
+      whenScaled: Retain
